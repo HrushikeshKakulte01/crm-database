@@ -1,28 +1,27 @@
 -- +goose Up
 -- the admin-configurable field list behind the "Lead settings" and
--- "Customer settings" screens in Form Settings. A row here either:
---   (a) overrides a built-in field's required/visible setting (e.g. the
---       admin hides "Email", or adds a "Referral" option to "Source"), or
---   (b) defines a brand-new custom field the admin added via "+Add
---       field" (Short answer / Long answer / Number / Dropdown).
--- There's no row for a built-in field until an admin actually changes
--- it — the app applies sensible defaults (Name/Contact number required
--- and locked, others optional) for any field with no row here yet.
+-- "Customer settings" screens in Form Settings — created before
+-- crm.contacts (00037) since the form shape an admin defines here is
+-- what that table's custom_fields answers get validated against.
 --
--- answers to (b)-type fields are stored in crm.contact_details's
--- custom_fields JSONB, keyed by field_key. Answers to (a)-type (built-in)
--- fields stay in their own real column (contact_name, phone, source,
--- ...) — this table only ever describes the form, never the data.
+-- a row here either overrides a built-in field's required/visible
+-- setting (e.g. the admin hides "Email", or adds a "Referral" option to
+-- "Source"), or defines a brand-new custom field added via "+Add field"
+-- (Short answer / Long answer / Number / Dropdown). There's no row for
+-- a built-in field until an admin actually changes it — the app applies
+-- sensible defaults (Name/Contact number required and locked, others
+-- optional) for any field with no row here yet.
 --
--- organization_id is a copy of the console database's
--- core.organizations.organization_id — not a foreign key (see
--- 00001_crm_schema.sql).
+-- answers to custom fields are stored in crm.contacts's custom_fields
+-- JSONB, keyed by field_key. Answers to built-in fields stay in their
+-- own real column (contact_name, phone, source, ...) — this table only
+-- ever describes the form, never the data.
 CREATE TABLE IF NOT EXISTS crm.form_fields(
     field_id UUID PRIMARY KEY DEFAULT uuidv7(),
-    organization_id UUID NOT NULL,
+    organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
     -- which form this field belongs to; issue forms are configured
-    -- separately (see 00008_crm_issue_form_fields.sql), since issues
-    -- also need a distinct form per pipeline stage.
+    -- separately (see 00038_crm_issues.sql), since issues also need a
+    -- distinct form per pipeline stage.
     form_type VARCHAR(10) NOT NULL CHECK(
         form_type IN(
             'lead',
