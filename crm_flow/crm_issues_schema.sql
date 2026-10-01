@@ -60,8 +60,8 @@ CREATE TABLE IF NOT EXISTS crm_issues_form_fields(
 -- =========================================================
 -- TABLE: CRM_ISSUES
 -- One row = one actual issue, always tied to exactly one lead/customer,
--- sitting in exactly one state, with one owner and many assignees
--- (see crm_issues_assignees). title is the "Name" field on the form.
+-- sitting in exactly one state, with one owner and one assignee.
+-- title is the "Name" field on the form.
 -- =========================================================
 CREATE TABLE IF NOT EXISTS crm_issues(
     issue_id UUID PRIMARY KEY DEFAULT uuidv7(),
@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS crm_issues(
     title VARCHAR(255) NOT NULL,
     description TEXT,
     owner_id UUID NOT NULL REFERENCES core.agents(agent_id),
+    assigned_to UUID NOT NULL REFERENCES core.agents(agent_id),
     created_by UUID REFERENCES core.agents(agent_id),
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -80,28 +81,17 @@ CREATE TABLE IF NOT EXISTS crm_issues(
 
 
 -- =========================================================
--- TABLE: CRM_ISSUES_ASSIGNEES
--- The "Assignees" field — an issue can have many agents.
--- =========================================================
-CREATE TABLE IF NOT EXISTS crm_issues_assignees(
-    issue_id UUID NOT NULL REFERENCES crm_issues(issue_id) ON DELETE CASCADE,
-    agent_id UUID NOT NULL REFERENCES core.agents(agent_id),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (issue_id, agent_id)
-);
-
-
--- =========================================================
 -- TABLE: CRM_ISSUES_STATE_ENTRIES
 -- History log. One row = one visit of an issue into a state —
--- captures the filled-in field data and who it was assigned to
--- at that exact moment.
+-- captures the filled-in field data, who owned it and who it was
+-- assigned to at that exact moment.
 -- =========================================================
 CREATE TABLE IF NOT EXISTS crm_issues_state_entries(
     entry_id UUID PRIMARY KEY DEFAULT uuidv7(),
     issue_id UUID NOT NULL REFERENCES crm_issues(issue_id) ON DELETE CASCADE,
     state_id UUID NOT NULL REFERENCES crm_issues_states(state_id),
     data JSONB NOT NULL DEFAULT '{}'::jsonb,
+    owner_id UUID NOT NULL REFERENCES core.agents(agent_id),
     assigned_to UUID REFERENCES core.agents(agent_id),
     filled_by UUID REFERENCES core.agents(agent_id),
     entered_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -112,6 +102,5 @@ CREATE TABLE IF NOT EXISTS crm_issues_state_entries(
 
 DROP TABLE IF EXISTS crm_issues_state_entries;
 DROP TABLE IF EXISTS crm_issues_form_fields;
-DROP TABLE IF EXISTS crm_issues_assignees;
 DROP TABLE IF EXISTS crm_issues;
 DROP TABLE IF EXISTS crm_issues_states;
