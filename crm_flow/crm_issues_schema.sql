@@ -66,10 +66,11 @@ CREATE TABLE IF NOT EXISTS crm_issues_form_fields(
 CREATE TABLE IF NOT EXISTS crm_issues(
     issue_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
+    issue_number BIGINT NOT NULL,
     lead_id UUID NOT NULL REFERENCES crm_leads_customers_leads(lead_id),
+    current_state_id UUID NOT NULL REFERENCES crm_issues_states(state_id),
     title VARCHAR(255) NOT NULL,
     description TEXT,
-    current_state_id UUID NOT NULL REFERENCES crm_issues_states(state_id),
     owner_id UUID NOT NULL REFERENCES core.agents(agent_id),
     created_by UUID REFERENCES core.agents(agent_id),
     is_active BOOLEAN NOT NULL DEFAULT true,
