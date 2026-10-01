@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS crm_leads_customers_leads(
     email extensions.citext,
 
     -- lead -> customer progress
+    owner_agent_id UUID REFERENCES core.agents(agent_id),
     status VARCHAR(10) NOT NULL DEFAULT 'lead',
 
     -- "new" vs "existing/repeat" contact, picked on the Add Lead form —
