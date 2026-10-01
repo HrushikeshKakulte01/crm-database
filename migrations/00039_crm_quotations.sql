@@ -9,13 +9,6 @@ CREATE TABLE IF NOT EXISTS crm.quotations(
     amount NUMERIC(14, 2) NOT NULL CHECK(
         amount >= 0
     ),
-    currency VARCHAR(3) NOT NULL DEFAULT 'INR' CHECK(
-        currency IN(
-            'INR',
-            'USD',
-            'EUR'
-        )
-    ),
     status VARCHAR(10) NOT NULL DEFAULT 'draft' CHECK(
         status IN(
             'draft',
