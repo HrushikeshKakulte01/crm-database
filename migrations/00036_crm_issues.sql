@@ -64,10 +64,10 @@ CREATE TABLE IF NOT EXISTS crm.issues_form_fields(
 -- ISS-1001, ISS-1002, ... starting fresh for each Bitamin client
 -- instead of sharing one global counter across every organization.
 -- =========================================================
-CREATE TABLE IF NOT EXISTS crm.issue_number_counters(
-    organization_id UUID PRIMARY KEY REFERENCES core.organizations(organization_id),
-    next_number BIGINT NOT NULL DEFAULT 1001
-);
+-- CREATE TABLE IF NOT EXISTS crm.issue_number_counters(
+--     organization_id UUID PRIMARY KEY REFERENCES core.organizations(organization_id),
+--     next_number BIGINT NOT NULL DEFAULT 1001
+-- );
 
 
 -- =========================================================
