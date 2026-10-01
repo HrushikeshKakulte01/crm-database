@@ -94,15 +94,6 @@ CREATE TABLE IF NOT EXISTS crm.issues(
     updated_at TIMESTAMPTZ,
     UNIQUE (organization_id, issue_number)
 );
--- issues by organization and state, for the Kanban board columns
-CREATE INDEX IF NOT EXISTS idx_crm_issues_org_state
-    ON crm.issues(organization_id, current_state_id, created_at DESC);
--- issues by lead/customer, so their detail page can list their issues
-CREATE INDEX IF NOT EXISTS idx_crm_issues_lead
-    ON crm.issues(lead_id, created_at DESC);
--- an owner's issues, for "my issues" views
-CREATE INDEX IF NOT EXISTS idx_crm_issues_owner
-    ON crm.issues(owner_id);
 
 -- assigns the next issue_number for an organization and stamps it on
 -- the new row, so callers never have to compute it themselves
@@ -141,9 +132,6 @@ CREATE TABLE IF NOT EXISTS crm.issues_assignees(
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (issue_id, agent_id)
 );
--- an agent's assigned issues, for "my issues" views
-CREATE INDEX IF NOT EXISTS idx_crm_issues_assignees_agent
-    ON crm.issues_assignees(agent_id, issue_id);
 
 
 -- =========================================================
@@ -161,9 +149,6 @@ CREATE TABLE IF NOT EXISTS crm.issues_state_entries(
     filled_by UUID REFERENCES core.agents(agent_id),
     entered_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
--- an issue's full state history, oldest first
-CREATE INDEX IF NOT EXISTS idx_crm_issues_state_entries_issue
-    ON crm.issues_state_entries(issue_id, entered_at);
 
 
 -- +goose Down
