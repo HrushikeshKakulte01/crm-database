@@ -29,7 +29,17 @@ CREATE TABLE IF NOT EXISTS crm_issues_form_fields(
     state_id UUID NOT NULL REFERENCES crm_issues_states(state_id) ON DELETE CASCADE,
     field_key VARCHAR(50) NOT NULL,
     label VARCHAR(100) NOT NULL,
-    field_type VARCHAR(20) NOT NULL,
+    field_type VARCHAR(20) NOT NULL CHECK (
+        field_type IN (
+            'short_answer',
+            'long_answer',
+            'number',
+            'dropdown_single',
+            'dropdown_multi',
+            'file_upload',
+            'quotation'
+        )
+    ),
     options JSONB,
     is_required BOOLEAN NOT NULL DEFAULT false,
     is_visible BOOLEAN NOT NULL DEFAULT true,
@@ -41,18 +51,7 @@ CREATE TABLE IF NOT EXISTS crm_issues_form_fields(
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
-    UNIQUE (state_id, field_key),
-    CONSTRAINT chk_crm_issues_form_fields_type CHECK (
-        field_type IN (
-            'short_answer',
-            'long_answer',
-            'number',
-            'dropdown_single',
-            'dropdown_multi',
-            'file_upload',
-            'quotation'
-        )
-    )
+    UNIQUE (state_id, field_key)
 );
 
 
@@ -76,7 +75,8 @@ CREATE TABLE IF NOT EXISTS crm_issues(
     created_by UUID REFERENCES core.agents(agent_id),
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ
+    updated_at TIMESTAMPTZ,
+    UNIQUE (organization_id, issue_number)
 );
 
 
