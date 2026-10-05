@@ -37,19 +37,6 @@ CREATE TABLE crm.quotation_items(
     )
 );
 
-CREATE TABLE quotation_items(
-    item_id UUID PRIMARY KEY DEFAULT uuidv7(),
-    quotation_id UUID NOT NULL REFERENCES crm.quotations(quotation_id) ON DELETE CASCADE,
-    item_name VARCHAR(150) NOT NULL,
-    price NUMERIC(14, 2) NOT NULL CHECK(
-        price >= 0
-    ),
-    quantity INT NOT NULL DEFAULT 1 CHECK(
-        quantity > 0
-    )
-);
-
-
 -- +goose Down
 DROP TABLE IF EXISTS quotation_items;
 DROP TABLE IF EXISTS crm.quotations;

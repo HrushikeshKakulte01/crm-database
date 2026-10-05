@@ -72,12 +72,6 @@ CREATE TABLE IF NOT EXISTS crm.customers(
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
     UNIQUE (organization_id, phone),
-    CONSTRAINT chk_customers_type CHECK(
-        type IN(
-            'new',
-            'existing'
-        )
-    )
 );
 
 
