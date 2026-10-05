@@ -1,8 +1,9 @@
 -- +goose Up
-
+-- =========================================================
 -- TABLE: ISSUES_STATES
 -- The pipeline stages an issue can move through (New, In Progress, ...).
 -- One row = one stage.
+-- =========================================================
 CREATE TABLE IF NOT EXISTS crm.issues_states(       -- admin issues settings for stage and orders
     state_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
@@ -15,12 +16,14 @@ CREATE TABLE IF NOT EXISTS crm.issues_states(       -- admin issues settings for
 );
 
 
+-- =========================================================
 -- TABLE: ISSUES_FORM_FIELDS
 -- Blueprint for the form inside each state (Notes, Attachments,
 -- plus any custom fields the admin adds). One row = one field.
 -- There is no separate, state-independent "base" issue form — an
 -- issue's starting state (e.g. "New") IS the creation form, since
 -- every issue is created directly into some state.
+-- =========================================================
 CREATE TABLE IF NOT EXISTS crm.issues_form_fields(
     field_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
@@ -49,17 +52,21 @@ CREATE TABLE IF NOT EXISTS crm.issues_form_fields(
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
-    UNIQUE (state_id, field_key),
-    CONSTRAINT chk_crm_issues_form_fields_type 
+    UNIQUE (state_id, field_key)
 );
 
 
+-- =========================================================
 -- TABLE: ISSUES
 -- One row = one actual issue, always tied to exactly one lead/customer,
--- sitting in exactly one state, with one owner (the department head
--- responsible for assigning it out) and many assignees (see
--- issues_assignees). title is the "Name" field on the form.
-
+-- sitting in exactly one state, with one owner and one assignee.
+-- title is the "Name" field on the form.
+-- current_state_id and assigned_to are the "right now" copies — the
+-- history lives in issues_state_entries / issues_assignments,
+-- and every change must update both in the same transaction.
+-- owner_id = accountable for the issue (the department head), rarely changes.
+-- assigned_to = the agent working on it right now, changes often.
+-- =========================================================
 CREATE TABLE IF NOT EXISTS crm.issues(      -- issues from the lead/customer POV
     issue_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
@@ -68,9 +75,8 @@ CREATE TABLE IF NOT EXISTS crm.issues(      -- issues from the lead/customer POV
     current_state_id UUID NOT NULL REFERENCES crm.issues_states(state_id),
     title VARCHAR(255) NOT NULL,
     description TEXT,
-    -- the department head responsible for this issue, always required —
-    -- they're the one who assigns it out to agents (see issues_assignees)
     owner_id UUID NOT NULL REFERENCES core.agents(agent_id),
+    assigned_to UUID NOT NULL REFERENCES core.agents(agent_id),
     created_by UUID REFERENCES core.agents(agent_id),
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -104,38 +110,65 @@ CREATE TRIGGER trg_crm_issues_assign_number
     EXECUTE FUNCTION crm.assign_issue_number();
 
 
--- TABLE: ISSUES_ASSIGNEES
--- The "Assignees" field — an issue can have many agents, assigned
--- out by the owner (department head) above.
-
-CREATE TABLE IF NOT EXISTS crm.issues_assignees(        -- agents or the owner
-    issue_id UUID NOT NULL REFERENCES crm.issues(issue_id) ON DELETE CASCADE,
-    agent_id UUID NOT NULL REFERENCES core.agents(agent_id),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    removed_at TIMESTAMPTZ,
-    PRIMARY KEY (issue_id, agent_id)
-);
-
-
+-- =========================================================
 -- TABLE: ISSUES_STATE_ENTRIES
 -- History log. One row = one visit of an issue into a state —
--- captures the filled-in field data and who it was assigned to
--- at that exact moment.
-
+-- captures the filled-in field data, who owned it and who it was
+-- assigned to at that exact moment.
+-- Append-only: moving an issue (forward OR backward) inserts a new row;
+-- old rows are never deleted, and only the latest row's data is edited.
+-- The latest row (ORDER BY created_at DESC, entry_id DESC) is the
+-- issue's current entry. Do NOT add UNIQUE (issue_id, state_id): an
+-- issue can visit the same state many times.
+-- =========================================================
 CREATE TABLE IF NOT EXISTS crm.issues_state_entries(    -- history of the issues and the states they've been in
     entry_id UUID PRIMARY KEY DEFAULT uuidv7(),
     issue_id UUID NOT NULL REFERENCES crm.issues(issue_id) ON DELETE CASCADE,
     state_id UUID NOT NULL REFERENCES crm.issues_states(state_id),
-    data JSONB NOT NULL DEFAULT '{}'::jsonb,
-    assigned_to UUID REFERENCES core.agents(agent_id),
-    filled_by UUID REFERENCES core.agents(agent_id),
-    entered_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    from_state_id UUID REFERENCES crm.issues_states(state_id),   -- NULL for the first entry
+    transition_type VARCHAR(10) NOT NULL CHECK (transition_type IN ('initial', 'forward', 'backward')),  -- stored at move time, not recomputed from sort_order
+    reason TEXT,                                                 -- required when the move is backward
+    data JSONB NOT NULL DEFAULT '{}'::jsonb,                     -- answers keyed by issues_form_fields.field_key
+    owner_id UUID NOT NULL REFERENCES core.agents(agent_id),
+    assigned_to UUID NOT NULL REFERENCES core.agents(agent_id),  -- assignee at the moment the state was entered
+    moved_by UUID REFERENCES core.agents(agent_id),              -- who moved the issue into this state
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ,
+    CHECK (transition_type <> 'backward' OR NULLIF(BTRIM(reason), '') IS NOT NULL),  -- backward move needs a non-blank reason
+    CHECK ((transition_type = 'initial') = (from_state_id IS NULL)),                  -- only the first entry has no from_state_id
+    CHECK (from_state_id IS NULL OR from_state_id <> state_id)                        -- a move can't land in the state it left
 );
+
+-- an issue's full timeline, newest first
+CREATE INDEX IF NOT EXISTS idx_crm_issues_state_entries_issue
+    ON crm.issues_state_entries(issue_id, created_at DESC, entry_id DESC);
+
+
+-- =========================================================
+-- TABLE: ISSUES_ASSIGNMENTS
+-- Assignee history. One row = one change of assignee, including the
+-- ones that happen as part of a state move and the ones that happen
+-- without any state change (reassign inside the same state).
+-- Append-only. issues.assigned_to holds the current value.
+-- =========================================================
+CREATE TABLE IF NOT EXISTS crm.issues_assignees(      -- history of who the issue was assigned to
+    assignment_id UUID PRIMARY KEY DEFAULT uuidv7(),
+    issue_id UUID NOT NULL REFERENCES crm.issues(issue_id) ON DELETE CASCADE,
+    entry_id UUID REFERENCES crm.issues_state_entries(entry_id),  -- the state visit during which this happened
+    assigned_to UUID NOT NULL REFERENCES core.agents(agent_id),
+    assigned_by UUID REFERENCES core.agents(agent_id),
+    reason TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- an issue's assignee history, newest first
+CREATE INDEX IF NOT EXISTS idx_crm_issues_assignments_issue
+    ON crm.issues_assignments(issue_id, created_at DESC, assignment_id DESC);
 
 
 -- +goose Down
+DROP TABLE IF EXISTS crm.issues_assignments;
 DROP TABLE IF EXISTS crm.issues_state_entries;
-DROP TABLE IF EXISTS crm.issues_assignees;
 DROP TRIGGER IF EXISTS trg_crm_issues_assign_number ON crm.issues;
 DROP FUNCTION IF EXISTS crm.assign_issue_number();
 DROP TABLE IF EXISTS crm.issues;
