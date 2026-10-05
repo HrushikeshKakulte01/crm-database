@@ -1,7 +1,5 @@
 -- +goose Up
--- a single price quoted against one issue, with a status tracking whether
--- it's been sent to and accepted by the customer. one issue can have more
--- than one quotation over time (e.g. a revised price).
+
 CREATE TABLE IF NOT EXISTS crm.quotations(
     quotation_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
@@ -23,7 +21,7 @@ CREATE TABLE IF NOT EXISTS crm.quotations(
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
     UNIQUE (organization_id, quotation_number),
-    CHECK (num_nonnulls(lead_id, customer_id) = 1) -- exactly one of the two
+    CHECK (num_nonnulls(lead_id, customer_id) = 1) 
 );
 
 CREATE TABLE IF NOT EXISTS crm.quotation_items(

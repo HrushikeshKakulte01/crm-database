@@ -1,9 +1,5 @@
 -- +goose Up
--- =========================================================
--- TABLE: FORM_FIELDS
--- Blueprint for configurable forms (Lead, Customer, ...).
--- One row = one field on one form_type's form.
--- =========================================================
+
 CREATE TABLE IF NOT EXISTS crm.form_fields(
     field_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
@@ -39,8 +35,6 @@ CREATE TABLE IF NOT EXISTS crm.leads(
     name VARCHAR(150) NOT NULL,
     phone VARCHAR(20) NOT NULL,
     company_name VARCHAR(150),
-    -- not a CHECK-constrained enum: Source is an admin-configurable
-    -- dropdown (crm.form_fields, field_key = 'source')
     source TEXT,
     custom_fields JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_by UUID REFERENCES core.agents(agent_id),
@@ -50,13 +44,11 @@ CREATE TABLE IF NOT EXISTS crm.leads(
     UNIQUE (organization_id, phone),
 );
 
--- =========================================================
 -- TABLE: CUSTOMERS
 -- A lead "converts" into a customer — converted_from_lead_id keeps
 -- that link so you can trace a customer back to the lead they
 -- started as (nullable, since a customer could in theory be added
 -- directly without ever being a lead).
--- =========================================================
 CREATE TABLE IF NOT EXISTS crm.customers(
     customer_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),

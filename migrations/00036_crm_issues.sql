@@ -1,9 +1,8 @@
 -- +goose Up
--- =========================================================
+
 -- TABLE: ISSUES_STATES
 -- The pipeline stages an issue can move through (New, In Progress, ...).
 -- One row = one stage.
--- =========================================================
 CREATE TABLE IF NOT EXISTS crm.issues_states(       -- admin issues settings for stage and orders
     state_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
@@ -16,14 +15,12 @@ CREATE TABLE IF NOT EXISTS crm.issues_states(       -- admin issues settings for
 );
 
 
--- =========================================================
 -- TABLE: ISSUES_FORM_FIELDS
 -- Blueprint for the form inside each state (Notes, Attachments,
 -- plus any custom fields the admin adds). One row = one field.
 -- There is no separate, state-independent "base" issue form — an
 -- issue's starting state (e.g. "New") IS the creation form, since
 -- every issue is created directly into some state.
--- =========================================================
 CREATE TABLE IF NOT EXISTS crm.issues_form_fields(
     field_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
@@ -57,13 +54,12 @@ CREATE TABLE IF NOT EXISTS crm.issues_form_fields(
 );
 
 
--- =========================================================
 -- TABLE: ISSUES
 -- One row = one actual issue, always tied to exactly one lead/customer,
 -- sitting in exactly one state, with one owner (the department head
 -- responsible for assigning it out) and many assignees (see
 -- issues_assignees). title is the "Name" field on the form.
--- =========================================================
+
 CREATE TABLE IF NOT EXISTS crm.issues(      -- issues from the lead/customer POV
     issue_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
@@ -108,11 +104,10 @@ CREATE TRIGGER trg_crm_issues_assign_number
     EXECUTE FUNCTION crm.assign_issue_number();
 
 
--- =========================================================
 -- TABLE: ISSUES_ASSIGNEES
 -- The "Assignees" field — an issue can have many agents, assigned
 -- out by the owner (department head) above.
--- =========================================================
+
 CREATE TABLE IF NOT EXISTS crm.issues_assignees(        -- agents or the owner
     issue_id UUID NOT NULL REFERENCES crm.issues(issue_id) ON DELETE CASCADE,
     agent_id UUID NOT NULL REFERENCES core.agents(agent_id),
@@ -122,12 +117,11 @@ CREATE TABLE IF NOT EXISTS crm.issues_assignees(        -- agents or the owner
 );
 
 
--- =========================================================
 -- TABLE: ISSUES_STATE_ENTRIES
 -- History log. One row = one visit of an issue into a state —
 -- captures the filled-in field data and who it was assigned to
 -- at that exact moment.
--- =========================================================
+
 CREATE TABLE IF NOT EXISTS crm.issues_state_entries(    -- history of the issues and the states they've been in
     entry_id UUID PRIMARY KEY DEFAULT uuidv7(),
     issue_id UUID NOT NULL REFERENCES crm.issues(issue_id) ON DELETE CASCADE,
