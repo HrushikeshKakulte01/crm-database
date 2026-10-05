@@ -2,10 +2,11 @@
 -- a single price quoted against one issue, with a status tracking whether
 -- it's been sent to and accepted by the customer. one issue can have more
 -- than one quotation over time (e.g. a revised price).
-CREATE TABLE crm.quotations(
+CREATE TABLE IF NOT EXISTS crm.quotations(
     quotation_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
     lead_id UUID REFERENCES crm.leads(lead_id),
+    issue_id UUID NOT NULL REFERENCES crm.issues(issue_id),
     customer_id UUID REFERENCES crm.customers(customer_id),
     total_amount NUMERIC(14, 2) NOT NULL CHECK(
         total_amount >= 0
@@ -25,7 +26,7 @@ CREATE TABLE crm.quotations(
     CHECK (num_nonnulls(lead_id, customer_id) = 1) -- exactly one of the two
 );
 
-CREATE TABLE crm.quotation_items(
+CREATE TABLE IF NOT EXISTS crm.quotation_items(
     item_id UUID PRIMARY KEY DEFAULT uuidv7(),
     quotation_id UUID NOT NULL REFERENCES crm.quotations(quotation_id) ON DELETE CASCADE,
     item_name VARCHAR(150) NOT NULL,
