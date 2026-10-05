@@ -1,5 +1,4 @@
 -- +goose Up
-
 CREATE SCHEMA IF NOT EXISTS core;
 CREATE SCHEMA IF NOT EXISTS extensions;
 CREATE EXTENSION IF NOT EXISTS citext WITH SCHEMA extensions;
@@ -63,8 +62,6 @@ INSERT INTO core.states(state_id, country_id, name) VALUES
 (35, 1, 'Lakshadweep'),
 (36, 1, 'Puducherry');
 
-
-
 -- partner table
 CREATE TABLE IF NOT EXISTS core.partners(
     partner_id UUID PRIMARY KEY DEFAULT uuidv7(),
@@ -72,7 +69,9 @@ CREATE TABLE IF NOT EXISTS core.partners(
     state_id INTEGER NOT NULL REFERENCES core.states(state_id),
     phone TEXT NOT NULL UNIQUE,
     email extensions.citext NOT NULL UNIQUE,
-    name TEXT NOT NULL CHECK (name <> ''),
+    name TEXT NOT NULL CHECK(
+        name <> ''
+    ),
     city TEXT NOT NULL,
     address TEXT NOT NULL,
     logo_url TEXT NOT NULL UNIQUE,
@@ -83,8 +82,6 @@ CREATE TABLE IF NOT EXISTS core.partners(
     updated_at TIMESTAMPTZ
 );
 
-
-
 -- organization table
 CREATE TABLE IF NOT EXISTS core.organizations(
     organization_id UUID PRIMARY KEY DEFAULT uuidv7(),
@@ -94,7 +91,9 @@ CREATE TABLE IF NOT EXISTS core.organizations(
     theme_id UUID NOT NULL REFERENCES core.frontend_themes(theme_id),
     phone TEXT NOT NULL UNIQUE,
     email extensions.citext NOT NULL UNIQUE,
-    name TEXT NOT NULL CHECK (name <> ''),
+    name TEXT NOT NULL CHECK(
+        name <> ''
+    ),
     city TEXT NOT NULL,
     address TEXT NOT NULL,
     logo_url TEXT,
@@ -103,8 +102,6 @@ CREATE TABLE IF NOT EXISTS core.organizations(
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ
 );
-
-
 
 -- agents (employees) table
 CREATE TYPE core.agent_role AS ENUM(
@@ -116,7 +113,9 @@ CREATE TABLE IF NOT EXISTS core.agents(
     agent_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
     role core.agent_role NOT NULL,
-    name TEXT NOT NULL CHECK (name <> ''),
+    name TEXT NOT NULL CHECK(
+        name <> ''
+    ),
     phone TEXT NOT NULL,
     email extensions.citext NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT true,
@@ -127,7 +126,8 @@ CREATE TABLE IF NOT EXISTS core.agents(
 );
 
 
--- +goose Down-- deliberately empty. On the real shared console database, these are
+-- +goose Down
+-- deliberately empty. On the real shared console database, these are
 -- the console's actual tables (this file did nothing to create them),
 -- so dropping them here would destroy real console data. On a
 -- throwaway dev database where this file DID create them, roll back by
