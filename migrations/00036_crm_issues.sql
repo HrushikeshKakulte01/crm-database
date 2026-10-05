@@ -5,7 +5,7 @@
 -- The pipeline stages an issue can move through (New, In Progress, ...).
 -- One row = one stage.
 -- =========================================================
-CREATE TABLE IF NOT EXISTS crm.issues_states(
+CREATE TABLE IF NOT EXISTS crm.issues_states(       -- admin issues settings for stage and orders
     state_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
     name VARCHAR(100) NOT NULL,
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS crm.issues_form_fields(
 -- responsible for assigning it out) and many assignees (see
 -- issues_assignees). title is the "Name" field on the form.
 -- =========================================================
-CREATE TABLE IF NOT EXISTS crm.issues(
+CREATE TABLE IF NOT EXISTS crm.issues(      -- issues from the lead/customer POV
     issue_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
     issue_number BIGINT NOT NULL,
@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS crm.issues(
     description TEXT,
     -- the department head responsible for this issue, always required —
     -- they're the one who assigns it out to agents (see issues_assignees)
-    owner_id UUID NOT NULL REFERENCES core.agents(agent_id),    -- need to create a role for the owner in prerequisite.
+    owner_id UUID NOT NULL REFERENCES core.agents(agent_id),   
     created_by UUID REFERENCES core.agents(agent_id),
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -115,7 +115,7 @@ CREATE TRIGGER trg_crm_issues_assign_number
 -- The "Assignees" field — an issue can have many agents, assigned
 -- out by the owner (department head) above.
 -- =========================================================
-CREATE TABLE IF NOT EXISTS crm.issues_assignees(                                -- is linking of the assignee and the issuse tab needed ?
+CREATE TABLE IF NOT EXISTS crm.issues_assignees(        -- agents or the owner            
     issue_id UUID NOT NULL REFERENCES crm.issues(issue_id) ON DELETE CASCADE,
     agent_id UUID NOT NULL REFERENCES core.agents(agent_id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS crm.issues_assignees(                                
 -- captures the filled-in field data and who it was assigned to
 -- at that exact moment.
 -- =========================================================
-CREATE TABLE IF NOT EXISTS crm.issues_state_entries(
+CREATE TABLE IF NOT EXISTS crm.issues_state_entries(    -- history of the issues and the states they've been in
     entry_id UUID PRIMARY KEY DEFAULT uuidv7(),
     issue_id UUID NOT NULL REFERENCES crm.issues(issue_id) ON DELETE CASCADE,
     state_id UUID NOT NULL REFERENCES crm.issues_states(state_id),

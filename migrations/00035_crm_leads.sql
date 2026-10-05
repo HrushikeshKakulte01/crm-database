@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS crm.form_fields(
     is_required_locked BOOLEAN NOT NULL DEFAULT false,
     is_visible_locked  BOOLEAN NOT NULL DEFAULT false,
     is_active BOOLEAN NOT NULL DEFAULT true,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),  -- custom_fields need to be added.
     updated_at TIMESTAMPTZ,
     UNIQUE (organization_id, type, field_key),
 );
@@ -46,19 +46,15 @@ CREATE TABLE IF NOT EXISTS crm.leads(
     -- dropdown (crm.form_fields, field_key = 'source')
     source TEXT,
 
-    custom_fields JSONB NOT NULL DEFAULT '{}'::jsonb,
+    custom_fields JSONB NOT NULL DEFAULT '{}'::jsonb,  -- lookout for this 
 
-    created_by UUID REFERENCES core.agents(agent_id),
+    created_by UUID REFERENCES core.agents(agent_id),   
 
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
 
     UNIQUE (organization_id, phone),
-
-    CONSTRAINT chk_leads_type CHECK (
-        type IN ('new', 'existing')
-    )
 );
 
 -- =========================================================
