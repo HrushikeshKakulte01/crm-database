@@ -5,7 +5,7 @@
 CREATE TABLE IF NOT EXISTS crm.quotations(
     quotation_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
-    issue_id UUID NOT NULL REFERENCES crm.issues(issue_id),
+    issue_id UUID NOT NULL REFERENCES crm.issues(issue_id),         -- there should be lead_id
     amount NUMERIC(14, 2) NOT NULL CHECK(
         amount >= 0
     ),
@@ -21,10 +21,6 @@ CREATE TABLE IF NOT EXISTS crm.quotations(
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ
 );
--- quotations by issue, most recent first
-CREATE INDEX IF NOT EXISTS idx_crm_quotations_issue
-    ON crm.quotations(issue_id, created_at DESC);
-
 
 -- +goose Down
 DROP TABLE IF EXISTS crm.quotations;

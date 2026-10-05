@@ -58,17 +58,6 @@ CREATE TABLE IF NOT EXISTS crm.issues_form_fields(
 );
 
 
--- =========================================================
--- TABLE: ISSUE_NUMBER_COUNTERS
--- one running counter per organization, so issue numbers read as
--- ISS-1001, ISS-1002, ... starting fresh for each Bitamin client
--- instead of sharing one global counter across every organization.
--- =========================================================
--- CREATE TABLE IF NOT EXISTS crm.issue_number_counters(
---     organization_id UUID PRIMARY KEY REFERENCES core.organizations(organization_id),
---     next_number BIGINT NOT NULL DEFAULT 1001
--- );
-
 
 -- =========================================================
 -- TABLE: ISSUES
@@ -87,7 +76,7 @@ CREATE TABLE IF NOT EXISTS crm.issues(
     description TEXT,
     -- the department head responsible for this issue, always required —
     -- they're the one who assigns it out to agents (see issues_assignees)
-    owner_id UUID NOT NULL REFERENCES core.agents(agent_id),
+    owner_id UUID NOT NULL REFERENCES core.agents(agent_id),    -- need to create a role for the owner in prerequisite.
     created_by UUID REFERENCES core.agents(agent_id),
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -126,7 +115,7 @@ CREATE TRIGGER trg_crm_issues_assign_number
 -- The "Assignees" field — an issue can have many agents, assigned
 -- out by the owner (department head) above.
 -- =========================================================
-CREATE TABLE IF NOT EXISTS crm.issues_assignees(
+CREATE TABLE IF NOT EXISTS crm.issues_assignees(                                -- is linking of the assignee and the issuse tab needed ?
     issue_id UUID NOT NULL REFERENCES crm.issues(issue_id) ON DELETE CASCADE,
     agent_id UUID NOT NULL REFERENCES core.agents(agent_id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
