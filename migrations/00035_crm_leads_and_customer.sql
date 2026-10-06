@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS crm.form_fields(
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
-    UNIQUE (organization_id, type, field_key),
+    UNIQUE (organization_id, field_type, field_key)
 );
 
 CREATE TABLE IF NOT EXISTS crm.leads(
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS crm.leads(
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
-    UNIQUE (organization_id, phone),
+    UNIQUE (organization_id, phone)
 );
 
 -- TABLE: CUSTOMERS
@@ -63,10 +63,11 @@ CREATE TABLE IF NOT EXISTS crm.customers(
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
-    UNIQUE (organization_id, phone),
+    UNIQUE (organization_id, phone)
 );
 
 
 -- +goose Down
-DROP TABLE IF EXISTS crm.leads_customers;
+DROP TABLE IF EXISTS crm.customers;
+DROP TABLE IF EXISTS crm.leads;
 DROP TABLE IF EXISTS crm.form_fields;

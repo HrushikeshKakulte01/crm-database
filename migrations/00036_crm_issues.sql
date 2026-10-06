@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS crm.issues(      -- issues from the lead/customer POV
     issue_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
     issue_number BIGINT NOT NULL,
-    lead_id UUID NOT NULL REFERENCES crm.leads_customers(lead_id),
+    lead_id UUID NOT NULL REFERENCES crm.leads(lead_id),
     current_state_id UUID NOT NULL REFERENCES crm.issues_states(state_id),
     title VARCHAR(255) NOT NULL,
     description TEXT,
@@ -83,6 +83,12 @@ CREATE TABLE IF NOT EXISTS crm.issues(      -- issues from the lead/customer POV
     updated_at TIMESTAMPTZ,
     UNIQUE (organization_id, issue_number)
 );
+
+CREATE TABLE IF NOT EXISTS crm.issue_number_counters(
+    organization_id UUID PRIMARY KEY REFERENCES core.organizations(organization_id),
+    next_number BIGINT NOT NULL
+);
+
 
 -- assigns the next issue_number for an organization and stamps it on
 -- the new row, so callers never have to compute it themselves

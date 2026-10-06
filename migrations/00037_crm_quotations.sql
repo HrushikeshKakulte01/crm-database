@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS crm.quotations(
     created_by UUID REFERENCES core.agents(agent_id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
-    UNIQUE (organization_id, quotation_number),
+    UNIQUE (organization_id),
     CHECK (num_nonnulls(lead_id, customer_id) = 1) 
 );
 
@@ -37,5 +37,5 @@ CREATE TABLE IF NOT EXISTS crm.quotation_items(
 );
 
 -- +goose Down
-DROP TABLE IF EXISTS quotation_items;
+DROP TABLE IF EXISTS crm.quotation_items;
 DROP TABLE IF EXISTS crm.quotations;
