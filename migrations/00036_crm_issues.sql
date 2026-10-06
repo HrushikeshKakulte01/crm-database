@@ -12,7 +12,10 @@ CREATE TABLE IF NOT EXISTS crm.issues_states(       -- admin issues settings for
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
-    UNIQUE (organization_id, name)
+    UNIQUE (organization_id, name, state_id)
+    CHECK (
+        num_nonnulls(lead_id, customer_id) = 1
+    )
 );
 
 
@@ -24,7 +27,7 @@ CREATE TABLE IF NOT EXISTS crm.issues_states(       -- admin issues settings for
 -- issue's starting state (e.g. "New") IS the creation form, since
 -- every issue is created directly into some state.
 -- =========================================================
-CREATE TABLE IF NOT EXISTS crm.issues_form_fields(
+CREATE TABLE IF NOT EXISTS crm.issues_form_fields(      -- the fields for each stage's form
     field_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
     state_id UUID NOT NULL REFERENCES crm.issues_states(state_id) ON DELETE CASCADE,
@@ -71,7 +74,7 @@ CREATE TABLE IF NOT EXISTS crm.issues(      -- issues from the lead/customer POV
     issue_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
     issue_number BIGINT NOT NULL,
-    lead_id UUID NOT NULL REFERENCES crm.leads(lead_id),
+    user_id UUID NOT NULL REFERENCES core.users(user_id),
     current_state_id UUID NOT NULL REFERENCES crm.issues_states(state_id),
     title VARCHAR(255) NOT NULL,
     description TEXT,
@@ -81,7 +84,9 @@ CREATE TABLE IF NOT EXISTS crm.issues(      -- issues from the lead/customer POV
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
-    UNIQUE (organization_id, issue_number)
+    UNIQUE (organization_id, issue_number, issue_id),
+    FOREIGN KEY (organization_id, current_state_id)
+        REFERENCES crm.issues_states(organization_id, state_id)
 );
 
 CREATE TABLE IF NOT EXISTS crm.issue_number_counters(
@@ -145,11 +150,6 @@ CREATE TABLE IF NOT EXISTS crm.issues_state_entries(    -- history of the issues
     CHECK (from_state_id IS NULL OR from_state_id <> state_id)                        -- a move can't land in the state it left
 );
 
--- an issue's full timeline, newest first
-CREATE INDEX IF NOT EXISTS idx_crm_issues_state_entries_issue
-    ON crm.issues_state_entries(issue_id, created_at DESC, entry_id DESC);
-
-
 -- =========================================================
 -- TABLE: ISSUES_ASSIGNMENTS
 -- Assignee history. One row = one change of assignee, including the
@@ -157,7 +157,7 @@ CREATE INDEX IF NOT EXISTS idx_crm_issues_state_entries_issue
 -- without any state change (reassign inside the same state).
 -- Append-only. issues.assigned_to holds the current value.
 -- =========================================================
-CREATE TABLE IF NOT EXISTS crm.issues_assignees(      -- history of who the issue was assigned to
+CREATE TABLE IF NOT EXISTS crm.issues_assignments(      -- a log for every changed assignee
     assignment_id UUID PRIMARY KEY DEFAULT uuidv7(),
     issue_id UUID NOT NULL REFERENCES crm.issues(issue_id) ON DELETE CASCADE,
     entry_id UUID REFERENCES crm.issues_state_entries(entry_id),  -- the state visit during which this happened
@@ -166,11 +166,6 @@ CREATE TABLE IF NOT EXISTS crm.issues_assignees(      -- history of who the issu
     reason TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
--- an issue's assignee history, newest first
-CREATE INDEX IF NOT EXISTS idx_crm_issues_assignments_issue
-    ON crm.issues_assignments(issue_id, created_at DESC, assignment_id DESC);
-
 
 -- +goose Down
 DROP TABLE IF EXISTS crm.issues_assignments;

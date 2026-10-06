@@ -29,41 +29,19 @@ CREATE TABLE IF NOT EXISTS crm.form_fields(
     UNIQUE (organization_id, field_type, field_key)
 );
 
-CREATE TABLE IF NOT EXISTS crm.leads(
+CREATE TABLE crm.leads(
     lead_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
-    name VARCHAR(150) NOT NULL,
-    phone VARCHAR(20) NOT NULL,
+    user_id UUID NOT NULL REFERENCES core.users(user_id),
     company_name VARCHAR(150),
     source TEXT,
     custom_fields JSONB NOT NULL DEFAULT '{}'::jsonb,
-    owner_id UUID REFERENCES core.agents(agent_id),
+    is_converted BOOLEAN NOT NULL DEFAULT false,
+    created_by UUID REFERENCES core.agents(agent_id),
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
-    UNIQUE (organization_id, phone)
-);
-
--- TABLE: CUSTOMERS
--- A lead "converts" into a customer — converted_from_lead_id keeps
--- that link so you can trace a customer back to the lead they
--- started as (nullable, since a customer could in theory be added
--- directly without ever being a lead).
-CREATE TABLE IF NOT EXISTS crm.customers(
-    customer_id UUID PRIMARY KEY DEFAULT uuidv7(),
-    organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
-    -- When a lead is converted to a customer, this field stores the lead_id of the original lead. This allows for tracking the conversion history and maintaining a relationship between leads and customers.
-    converted_from_lead_id UUID REFERENCES crm.leads(lead_id),
-    name VARCHAR(150) NOT NULL,
-    phone VARCHAR(20) NOT NULL,
-    company_name VARCHAR(150),
-    source TEXT,
-    custom_fields JSONB NOT NULL DEFAULT '{}'::jsonb,
-    owner_id UUID REFERENCES core.agents(agent_id),
-    is_active BOOLEAN NOT NULL DEFAULT true,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ,
-    UNIQUE (organization_id, phone)
+    UNIQUE (organization_id, user_id)
 );
 
 
