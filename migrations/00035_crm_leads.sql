@@ -46,6 +46,5 @@ CREATE TABLE crm.leads(
 
 
 -- +goose Down
-DROP TABLE IF EXISTS crm.customers;
 DROP TABLE IF EXISTS crm.leads;
 DROP TABLE IF EXISTS crm.form_fields;

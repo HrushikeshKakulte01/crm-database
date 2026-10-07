@@ -157,7 +157,7 @@ CREATE TABLE IF NOT EXISTS crm.issues_state_entries(    -- history of the issues
 -- without any state change (reassign inside the same state).
 -- Append-only. issues.assigned_to holds the current value.
 -- =========================================================
-CREATE TABLE IF NOT EXISTS crm.issues_assignments(      -- a log for every changed assignee
+CREATE TABLE IF NOT EXISTS crm.issues_assignments_history(      -- a log for every changed assignee
     assignment_id UUID PRIMARY KEY DEFAULT uuidv7(),
     issue_id UUID NOT NULL REFERENCES crm.issues(issue_id) ON DELETE CASCADE,
     entry_id UUID REFERENCES crm.issues_state_entries(entry_id),  -- the state visit during which this happened
@@ -168,7 +168,7 @@ CREATE TABLE IF NOT EXISTS crm.issues_assignments(      -- a log for every chang
 );
 
 -- +goose Down
-DROP TABLE IF EXISTS crm.issues_assignments;
+DROP TABLE IF EXISTS crm.issues_assignments_history;
 DROP TABLE IF EXISTS crm.issues_state_entries;
 DROP TRIGGER IF EXISTS trg_crm_issues_assign_number ON crm.issues;
 DROP FUNCTION IF EXISTS crm.assign_issue_number();
