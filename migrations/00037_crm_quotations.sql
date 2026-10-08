@@ -1,4 +1,5 @@
 -- +goose Up
+-- stores quotations
 CREATE TABLE IF NOT EXISTS crm.quotations(
     quotation_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
@@ -20,6 +21,7 @@ CREATE TABLE IF NOT EXISTS crm.quotations(
     UNIQUE (organization_id, quotation_id)
 );
 
+-- fields to create a new quotation
 CREATE TABLE IF NOT EXISTS crm.quotation_items(
     item_id UUID PRIMARY KEY DEFAULT uuidv7(),
     quotation_id UUID NOT NULL REFERENCES crm.quotations(quotation_id) ON DELETE CASCADE,

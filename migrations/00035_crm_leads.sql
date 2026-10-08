@@ -1,4 +1,5 @@
 -- +goose Up
+-- form fields that the admin adds for leads and customers
 CREATE TABLE IF NOT EXISTS crm.form_fields(
     field_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
@@ -28,6 +29,7 @@ CREATE TABLE IF NOT EXISTS crm.form_fields(
     UNIQUE (organization_id, field_type, field_key)
 );
 
+-- stores leads and converts it to customers for the organization
 CREATE TABLE IF NOT EXISTS crm.leads(
     lead_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
@@ -46,8 +48,6 @@ CREATE TABLE IF NOT EXISTS crm.leads(
         is_converted = (converted_at IS NOT NULL)
     )
 );
-
-
 -- +goose Down
 DROP TABLE IF EXISTS crm.leads;
 DROP TABLE IF EXISTS crm.form_fields;

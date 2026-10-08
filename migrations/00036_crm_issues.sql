@@ -1,12 +1,9 @@
 -- +goose Up
--- =========================================================
--- TABLE: ISSUES_STATES
--- The pipeline stages an issue can move through (New, In Progress, ...).
--- One row = one stage.
--- =========================================================
-CREATE TABLE IF NOT EXISTS crm.issues_states(       -- admin issues settings for stage and orders
+-- admin issues settings for stage and orders
+CREATE TABLE IF NOT EXISTS crm.issues_states(
     state_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
+    lead_id UUID REFERENCES crm.leads(lead_id),
     name VARCHAR(100) NOT NULL,
     sort_order INT NOT NULL DEFAULT 0,
     is_active BOOLEAN NOT NULL DEFAULT true,
@@ -18,16 +15,8 @@ CREATE TABLE IF NOT EXISTS crm.issues_states(       -- admin issues settings for
     )
 );
 
-
--- =========================================================
--- TABLE: ISSUES_FORM_FIELDS
--- Blueprint for the form inside each state (Notes, Attachments,
--- plus any custom fields the admin adds). One row = one field.
--- There is no separate, state-independent "base" issue form — an
--- issue's starting state (e.g. "New") IS the creation form, since
--- every issue is created directly into some state.
--- =========================================================
-CREATE TABLE IF NOT EXISTS crm.issues_form_fields(      -- the fields for each stage's form
+-- the fields for each stage's form which the admin adds(eg. Notes, attachments, etc)
+CREATE TABLE IF NOT EXISTS crm.issues_form_fields(      
     field_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
     state_id UUID NOT NULL REFERENCES crm.issues_states(state_id) ON DELETE CASCADE,
@@ -58,7 +47,7 @@ CREATE TABLE IF NOT EXISTS crm.issues_form_fields(      -- the fields for each s
     UNIQUE (state_id, field_key)
 );
 
--- issues from the lead/customer POV
+-- issues from the agent's POV
 CREATE TABLE IF NOT EXISTS crm.issues(
     issue_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
@@ -83,9 +72,7 @@ CREATE TABLE IF NOT EXISTS crm.issue_number_counters(
     next_number BIGINT NOT NULL
 );
 
-
--- assigns the next issue_number for an organization and stamps it on
--- the new row, so callers never have to compute it themselves
+-- asssigns a issues number to a new issues
 -- +goose StatementBegin
 CREATE OR REPLACE FUNCTION crm.assign_issue_number() RETURNS TRIGGER AS $$
 DECLARE
@@ -111,26 +98,15 @@ CREATE TRIGGER trg_crm_issues_assign_number
     FOR EACH ROW
     EXECUTE FUNCTION crm.assign_issue_number();
 
-
--- =========================================================
--- TABLE: ISSUES_STATE_ENTRIES
--- History log. One row = one visit of an issue into a state —
--- captures the filled-in field data, who owned it and who it was
--- assigned to at that exact moment.
--- Append-only: moving an issue (forward OR backward) inserts a new row;
--- old rows are never deleted, and only the latest row's data is edited.
--- The latest row (ORDER BY created_at DESC, entry_id DESC) is the
--- issue's current entry. Do NOT add UNIQUE (issue_id, state_id): an
--- issue can visit the same state many times.
--- =========================================================
-CREATE TABLE IF NOT EXISTS crm.issues_state_entries(    -- history of the issues and the states they've been in
+-- history of the issues assignee and the states they've been in
+CREATE TABLE IF NOT EXISTS crm.issues_state_entries(    
     entry_id UUID PRIMARY KEY DEFAULT uuidv7(),
     issue_id UUID NOT NULL REFERENCES crm.issues(issue_id) ON DELETE CASCADE,
     state_id UUID NOT NULL REFERENCES crm.issues_states(state_id),
     from_state_id UUID REFERENCES crm.issues_states(state_id),   -- NULL for the first entry
     transition_type VARCHAR(10) NOT NULL CHECK (transition_type IN ('initial', 'forward', 'backward')),  -- stored at move time, not recomputed from sort_order
-    reason TEXT,                                                 -- required when the move is backward
-    data JSONB NOT NULL DEFAULT '{}'::jsonb,                     -- answers keyed by issues_form_fields.field_key
+    reason TEXT,                                                 
+    data JSONB NOT NULL DEFAULT '{}'::jsonb,                     
     owner_id UUID NOT NULL REFERENCES core.agents(agent_id),
     assigned_to UUID NOT NULL REFERENCES core.agents(agent_id),  -- assignee at the moment the state was entered
     moved_by UUID REFERENCES core.agents(agent_id),              -- who moved the issue into this state
