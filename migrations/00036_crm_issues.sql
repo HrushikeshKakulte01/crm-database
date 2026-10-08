@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS crm.issues_states(
     updated_at TIMESTAMPTZ,
     UNIQUE (organization_id, name, state_id),
     CHECK (
-        num_nonnulls(lead_id, customer_id) = 1
+        num_nonnulls(lead_id, customer_id) = 1  -- there is no customer_id in the table.
     )
 );
 
@@ -66,37 +66,6 @@ CREATE TABLE IF NOT EXISTS crm.issues(
     FOREIGN KEY (organization_id, current_state_id)
         REFERENCES crm.issues_states(organization_id, state_id)
 );
-
-CREATE TABLE IF NOT EXISTS crm.issue_number_counters(
-    organization_id UUID PRIMARY KEY REFERENCES core.organizations(organization_id),
-    next_number BIGINT NOT NULL
-);
-
--- asssigns a issues number to a new issues
--- +goose StatementBegin
-CREATE OR REPLACE FUNCTION crm.assign_issue_number() RETURNS TRIGGER AS $$
-DECLARE
-    assigned_number BIGINT;
-BEGIN
-    INSERT INTO crm.issue_number_counters (organization_id, next_number)
-        VALUES (NEW.organization_id, 1001)
-        ON CONFLICT (organization_id) DO NOTHING;
-
-    UPDATE crm.issue_number_counters
-        SET next_number = next_number + 1
-        WHERE organization_id = NEW.organization_id
-        RETURNING next_number - 1 INTO assigned_number;
-
-    NEW.issue_number := assigned_number;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
--- +goose StatementEnd
-
-CREATE TRIGGER trg_crm_issues_assign_number
-    BEFORE INSERT ON crm.issues
-    FOR EACH ROW
-    EXECUTE FUNCTION crm.assign_issue_number();
 
 -- history of the issues assignee and the states they've been in
 CREATE TABLE IF NOT EXISTS crm.issues_state_entries(    
