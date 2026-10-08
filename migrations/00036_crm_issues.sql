@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS crm.issues_states(       -- admin issues settings for
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
-    UNIQUE (organization_id, name, state_id)
+    UNIQUE (organization_id, name, state_id),
     CHECK (
         num_nonnulls(lead_id, customer_id) = 1
     )
@@ -58,19 +58,8 @@ CREATE TABLE IF NOT EXISTS crm.issues_form_fields(      -- the fields for each s
     UNIQUE (state_id, field_key)
 );
 
-
--- =========================================================
--- TABLE: ISSUES
--- One row = one actual issue, always tied to exactly one lead/customer,
--- sitting in exactly one state, with one owner and one assignee.
--- title is the "Name" field on the form.
--- current_state_id and assigned_to are the "right now" copies — the
--- history lives in issues_state_entries / issues_assignments,
--- and every change must update both in the same transaction.
--- owner_id = accountable for the issue (the department head), rarely changes.
--- assigned_to = the agent working on it right now, changes often.
--- =========================================================
-CREATE TABLE IF NOT EXISTS crm.issues(      -- issues from the lead/customer POV
+-- issues from the lead/customer POV
+CREATE TABLE IF NOT EXISTS crm.issues(
     issue_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
     issue_number BIGINT NOT NULL,
@@ -97,6 +86,7 @@ CREATE TABLE IF NOT EXISTS crm.issue_number_counters(
 
 -- assigns the next issue_number for an organization and stamps it on
 -- the new row, so callers never have to compute it themselves
+-- +goose StatementBegin
 CREATE OR REPLACE FUNCTION crm.assign_issue_number() RETURNS TRIGGER AS $$
 DECLARE
     assigned_number BIGINT;
@@ -114,6 +104,7 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+-- +goose StatementEnd
 
 CREATE TRIGGER trg_crm_issues_assign_number
     BEFORE INSERT ON crm.issues
@@ -150,14 +141,8 @@ CREATE TABLE IF NOT EXISTS crm.issues_state_entries(    -- history of the issues
     CHECK (from_state_id IS NULL OR from_state_id <> state_id)                        -- a move can't land in the state it left
 );
 
--- =========================================================
--- TABLE: ISSUES_ASSIGNMENTS
--- Assignee history. One row = one change of assignee, including the
--- ones that happen as part of a state move and the ones that happen
--- without any state change (reassign inside the same state).
--- Append-only. issues.assigned_to holds the current value.
--- =========================================================
-CREATE TABLE IF NOT EXISTS crm.issues_assignments_history(      -- a log for every changed assignee
+-- a log for every changed assignee
+CREATE TABLE IF NOT EXISTS crm.issues_assignments_history(
     assignment_id UUID PRIMARY KEY DEFAULT uuidv7(),
     issue_id UUID NOT NULL REFERENCES crm.issues(issue_id) ON DELETE CASCADE,
     entry_id UUID REFERENCES crm.issues_state_entries(entry_id),  -- the state visit during which this happened
@@ -166,6 +151,10 @@ CREATE TABLE IF NOT EXISTS crm.issues_assignments_history(      -- a log for eve
     reason TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_crm_issues_assignments_history_issue
+    ON crm.issues_assignments_history(issue_id, created_at DESC, assignment_id DESC);
+
 
 -- +goose Down
 DROP TABLE IF EXISTS crm.issues_assignments_history;

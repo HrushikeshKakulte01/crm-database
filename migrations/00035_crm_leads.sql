@@ -1,5 +1,4 @@
 -- +goose Up
-
 CREATE TABLE IF NOT EXISTS crm.form_fields(
     field_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
@@ -29,7 +28,7 @@ CREATE TABLE IF NOT EXISTS crm.form_fields(
     UNIQUE (organization_id, field_type, field_key)
 );
 
-CREATE TABLE crm.leads(
+CREATE TABLE IF NOT EXISTS crm.leads(
     lead_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
     user_id UUID NOT NULL REFERENCES core.users(user_id),
@@ -37,11 +36,15 @@ CREATE TABLE crm.leads(
     source TEXT,
     custom_fields JSONB NOT NULL DEFAULT '{}'::jsonb,
     is_converted BOOLEAN NOT NULL DEFAULT false,
+    converted_at TIMESTAMPTZ,
     created_by UUID REFERENCES core.agents(agent_id),
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
     UNIQUE (organization_id, user_id)
+    CHECK(
+        is_converted = (converted_at IS NOT NULL)
+    )
 );
 
 

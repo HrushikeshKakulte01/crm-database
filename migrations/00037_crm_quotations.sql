@@ -1,5 +1,4 @@
 -- +goose Up
-
 CREATE TABLE IF NOT EXISTS crm.quotations(
     quotation_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
@@ -18,7 +17,7 @@ CREATE TABLE IF NOT EXISTS crm.quotations(
     created_by UUID REFERENCES core.agents(agent_id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
-    UNIQUE (organization_id, quotation_number),
+    UNIQUE (organization_id, quotation_id)
 );
 
 CREATE TABLE IF NOT EXISTS crm.quotation_items(
