@@ -31,9 +31,8 @@ CREATE TABLE IF NOT EXISTS crm.form_fields(
 
 -- stores leads and converts it to customers for the organization
 CREATE TABLE IF NOT EXISTS crm.leads(
-    lead_id UUID PRIMARY KEY DEFAULT uuidv7(),
+    user_id UUID PRIMARY KEY REFERENCES core.users(user_id), -- user_id point to the core.user table for the name and phone number
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
-    user_id UUID NOT NULL REFERENCES core.users(user_id), -- user_id point to the core.user table for the name and phone number
     company_name VARCHAR(150),
     source TEXT,
     custom_fields JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -43,7 +42,7 @@ CREATE TABLE IF NOT EXISTS crm.leads(
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
-    UNIQUE (organization_id, user_id)
+    UNIQUE (organization_id, user_id),
     CHECK(
         is_converted = (converted_at IS NOT NULL)
     )

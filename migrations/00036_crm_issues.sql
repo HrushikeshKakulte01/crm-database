@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS crm.issues_states(
     updated_at TIMESTAMPTZ,
     UNIQUE (organization_id, name),
     UNIQUE (organization_id, sort_order)
+    UNIQUE (organization_id, state_id)
 );
 
 -- the fields for each stage's form which the admin adds(eg. Notes, attachments, etc)
@@ -69,7 +70,7 @@ CREATE TABLE IF NOT EXISTS crm.issues(
     UNIQUE (organization_id, issue_id),
     FOREIGN KEY (organization_id, current_state_id)
         REFERENCES crm.issues_states(organization_id, state_id)
-);
+); 
 
 -- history of the issues assignee and the states they've been in
 -- should there be attachment field in this table
@@ -92,14 +93,18 @@ CREATE TABLE IF NOT EXISTS crm.issues_state_entries(    -- can i rename this as 
 );
 
 -- a log for every changed assignee
-CREATE TABLE IF NOT EXISTS crm.issues_assignments_history(
+CREATE TABLE IF NOT EXISTS crm.issues_assignments(
     assignment_id UUID PRIMARY KEY DEFAULT uuidv7(),
     issue_id UUID NOT NULL REFERENCES crm.issues(issue_id) ON DELETE CASCADE,
-    entry_id UUID REFERENCES crm.issues_state_entries(entry_id),  -- the state visit during which this happened
-    assigned_to UUID NOT NULL REFERENCES core.agents(agent_id),
-    assigned_by UUID REFERENCES core.agents(agent_id),
-    reason TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    agent_id UUID NOT NULL REFERENCES core.agents(agent_id),
+    assigned_by UUID NOT NULL REFERENCES core.agents(agent_id),
+    assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    entry_id UUID REFERENCES crm.issues_state_entries(entry_id),  -- stage the issue was in
+    unassigned_by UUID REFERENCES core.agents(agent_id),
+    unassigned_at TIMESTAMPTZ,
+    unassign_reason TEXT,
+    CHECK ((unassigned_at IS NULL) = (unassigned_by IS NULL)),
+    CHECK (unassigned_at IS NULL OR unassigned_at >= assigned_at)
 );
 
 CREATE INDEX IF NOT EXISTS idx_crm_issues_assignments_history_issue
@@ -107,11 +112,8 @@ CREATE INDEX IF NOT EXISTS idx_crm_issues_assignments_history_issue
 
 
 -- +goose Down
-DROP TABLE IF EXISTS crm.issues_assignments_history;
+DROP TABLE IF EXISTS crm.issues_assignments;
 DROP TABLE IF EXISTS crm.issues_state_entries;
-DROP TRIGGER IF EXISTS trg_crm_issues_assign_number ON crm.issues;
-DROP FUNCTION IF EXISTS crm.assign_issue_number();
 DROP TABLE IF EXISTS crm.issues;
-DROP TABLE IF EXISTS crm.issue_number_counters;
 DROP TABLE IF EXISTS crm.issues_form_fields;
 DROP TABLE IF EXISTS crm.issues_states;

@@ -32,16 +32,6 @@ CREATE TABLE IF NOT EXISTS core.states(
     state_name TEXT NOT NULL
 );
 
--- frontend theme colors for the organization
-CREATE TABLE IF NOT EXISTS core.frontend_themes(
-    theme_id UUID PRIMARY KEY DEFAULT uuidv7(),
-    theme_name TEXT NOT NULL UNIQUE,
-    theme_object JSONB NOT NULL,
-    is_active BOOLEAN NOT NULL DEFAULT true,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ
-);
-
 -- ---------------------------------------------------------
 -- [console: 00008_core_organizations.sql]
 -- ---------------------------------------------------------
