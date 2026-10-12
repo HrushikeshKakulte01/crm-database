@@ -3,16 +3,13 @@
 CREATE TABLE IF NOT EXISTS crm.issues_states(
     state_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
-    lead_id UUID REFERENCES crm.leads(lead_id),
     name VARCHAR(100) NOT NULL,
     sort_order INT NOT NULL DEFAULT 0,
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
-    UNIQUE (organization_id, name, state_id),
-    CHECK (
-        num_nonnulls(lead_id, customer_id) = 1  -- there is no customer_id in the table.
-    )
+    UNIQUE (organization_id, name),
+    UNIQUE (organization_id, sort_order)
 );
 
 -- the fields for each stage's form which the admin adds(eg. Notes, attachments, etc)
@@ -26,6 +23,8 @@ CREATE TABLE IF NOT EXISTS crm.issues_form_fields(
         field_type IN(
             'short_answer',
             'long_answer',
+            'date',
+            'URL'
             'number',
             'dropdown_single',
             'dropdown_multi',
@@ -48,33 +47,39 @@ CREATE TABLE IF NOT EXISTS crm.issues_form_fields(
 );
 
 -- issues from the agent's POV
-CREATE TABLE IF NOT EXISTS crm.issues(
+
+-- issues should have link to lead details
+-- should this table have a state_id to track the current state of the issue?
+-- should there be a lead_id here to track and to identify that which lead this issues belongs to
+CREATE TABLE IF NOT EXISTS crm.issues(      
     issue_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
     issue_number BIGINT NOT NULL,
-    user_id UUID NOT NULL REFERENCES core.users(user_id),
+    user_id UUID NOT NULL REFERENCES core.users(user_id),   -- whhy do we need user_id here? we can get the user_id from the lead_id
     current_state_id UUID NOT NULL REFERENCES crm.issues_states(state_id),
     title VARCHAR(255) NOT NULL,
-    description TEXT,
+    description TEXT,                                               
     owner_id UUID NOT NULL REFERENCES core.agents(agent_id),
     assigned_to UUID NOT NULL REFERENCES core.agents(agent_id),
     created_by UUID REFERENCES core.agents(agent_id),
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
-    UNIQUE (organization_id, issue_number, issue_id),
+    UNIQUE (organization_id, issue_number),
+    UNIQUE (organization_id, issue_id),
     FOREIGN KEY (organization_id, current_state_id)
         REFERENCES crm.issues_states(organization_id, state_id)
 );
 
 -- history of the issues assignee and the states they've been in
-CREATE TABLE IF NOT EXISTS crm.issues_state_entries(    
+-- should there be attachment field in this table
+CREATE TABLE IF NOT EXISTS crm.issues_state_entries(    -- can i rename this as pipeline/progress
     entry_id UUID PRIMARY KEY DEFAULT uuidv7(),
     issue_id UUID NOT NULL REFERENCES crm.issues(issue_id) ON DELETE CASCADE,
     state_id UUID NOT NULL REFERENCES crm.issues_states(state_id),
     from_state_id UUID REFERENCES crm.issues_states(state_id),   -- NULL for the first entry
     transition_type VARCHAR(10) NOT NULL CHECK (transition_type IN ('initial', 'forward', 'backward')),  -- stored at move time, not recomputed from sort_order
-    reason TEXT,                                                 
+    reason TEXT,                                                        -- can i rename this as Notes                                 
     data JSONB NOT NULL DEFAULT '{}'::jsonb,                     
     owner_id UUID NOT NULL REFERENCES core.agents(agent_id),
     assigned_to UUID NOT NULL REFERENCES core.agents(agent_id),  -- assignee at the moment the state was entered
