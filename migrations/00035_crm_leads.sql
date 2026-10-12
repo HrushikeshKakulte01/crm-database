@@ -3,7 +3,6 @@
 CREATE TABLE IF NOT EXISTS crm.form_fields(
     field_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
-    field_key VARCHAR(50) NOT NULL,
     label VARCHAR(100) NOT NULL,
     field_type VARCHAR(20) NOT NULL CHECK(
         field_type IN(
@@ -26,12 +25,13 @@ CREATE TABLE IF NOT EXISTS crm.form_fields(
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
-    UNIQUE (organization_id, field_type, field_key)
+    UNIQUE (organization_id, label)
 );
 
 -- stores leads and converts it to customers for the organization
 CREATE TABLE IF NOT EXISTS crm.leads(
-    user_id UUID PRIMARY KEY REFERENCES core.users(user_id), -- user_id point to the core.user table for the name and phone number
+    lead_id UUID PRIMARY KEY DEFAULT uuidv7(),
+    user_id UUID NOT NULL REFERENCES core.users(user_id),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
     company_name VARCHAR(150),
     source TEXT,
