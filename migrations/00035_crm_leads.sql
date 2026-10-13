@@ -33,19 +33,21 @@ CREATE TABLE IF NOT EXISTS crm.leads(
     lead_id UUID PRIMARY KEY DEFAULT uuidv7(),
     user_id UUID NOT NULL REFERENCES core.users(user_id),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
+    owner_id UUID NOT NULL REFERENCES core.agents(agent_id),
     company_name VARCHAR(150),
-    source TEXT,
-    custom_fields JSONB NOT NULL DEFAULT '{}'::jsonb,
-    is_converted BOOLEAN NOT NULL DEFAULT false,
+    source TEXT NOT NULL,
+    state_id INTEGER REFERENCES core.states(state_id),
+    city VARCHAR(100),
+    custom_fields JSONB NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(custom_fields) = 'object'),
+    is_converted BOOLEAN NOT NULL DEFAULT false CHECK (is_converted = (converted_at IS NOT NULL)),
     converted_at TIMESTAMPTZ,
+    converted_by UUID REFERENCES core.agents(agent_id) CHECK (converted_by IS NULL OR is_converted),
     created_by UUID REFERENCES core.agents(agent_id),
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
     UNIQUE (organization_id, user_id),
-    CHECK(
-        is_converted = (converted_at IS NOT NULL)
-    )
+    UNIQUE (organization_id, lead_id)
 );
 -- +goose Down
 DROP TABLE IF EXISTS crm.leads;
