@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS crm.issue_tickets(
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
     FOREIGN KEY (organization_id, issue_id)
-        REFERENCES cmr.issues(organization_id, issue_id)
+        REFERENCES cmr.issues(organization_id, issue_id),
     CHECK (due_time is NULL OR due_date is NOT NULL),
     CHECK ((status = 'closed') = (closed_at is NOT NULL))
 );

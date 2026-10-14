@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS crm.quotations(
             'approved_client',
             'declined_client',
         )
-    );
+    ),
     subtotal NUMERIC(14, 2) NOT NULL CHECK(
         subtotal >= 0
     ),
@@ -23,12 +23,12 @@ CREATE TABLE IF NOT EXISTS crm.quotations(
         total >= 0
     ),
     notes TEXT,
-    replace_quotation_id UUID,
+    replace_quotation_id UUID,          -- is stores the quotation_id of the revised quotation
     created_by UUID REFERENCES core.agents(agent_id),
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
-    UNIQUE (organization_id, quotation_id)
+    UNIQUE (organization_id, quotation_id),
     FOREIGN KEY (organization_id, lead_id)
         REFERENCES crm.leads(organiuzation_id, lead_id),
     FOREIGN KEY (organization_id, issue_id, lead_id)
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS crm.quotation_items(
     ),
     quantity INT NOT NULL DEFAULT 1 CHECK(
         quantity > 0
-    )
+    ),
     amount NUMERIC(14, 2) GENERATED ALWAYS AS (price * quantity) STORED,
     sort_order INT NOT NULL DEFAULT 0,
     created_at TITMESTAMPTZ NOT NULL DEFAULT NOW(),

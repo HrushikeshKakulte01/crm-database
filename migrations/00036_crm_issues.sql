@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS crm.issues_pipeline_progress(
         REFERENCES crm.issues_states(organization_id, state_id),
     CHECK (transition_type <> 'backward' OR NULLIF(BTRIM(reason), '') IS NOT NULL),  -- backward move needs a non-blank reason
     CHECK ((transition_type = 'initial') = (from_state_id IS NULL)),                  -- only the first entry has no from_state_id
-    CHECK (from_state_id IS NULL OR from_state_id <> state_id)                          -- a move can't land in the state it left
+    CHECK (from_state_id IS NULL OR from_state_id <> state_id),                         -- a move can't land in the state it left
     CHECK (jsonb_typeof(data) = 'object')                              -- accepts the data in json form {"name": "hrushikesh"}
 );
 
@@ -121,6 +121,7 @@ CREATE TABLE IF NOT EXISTS crm.issues_assignments(
     CHECK (unassigned_at IS NULL OR unassigned_at >= assigned_at)
 );
 
+-- note history for an issue 
 CREATE TABLE IF NOT EXISTS crm.issues_notes(
     note_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL,
@@ -130,7 +131,7 @@ CREATE TABLE IF NOT EXISTS crm.issues_notes(
     created_by UUID NOT NULL REFERENCES core.agents(agent_id),
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ
+    updated_at TIMESTAMPTZ,
     FOREIGN KEY (organization_id, issue_id, entry_id)
         REFERENCES crm.issues_pipeline_progress(organization_id, issue_id, entry_id)
 );
