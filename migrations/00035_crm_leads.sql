@@ -3,11 +3,18 @@
 CREATE TABLE IF NOT EXISTS crm.form_fields(
     field_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
+    system_key VARCHAR(20) CHECK (
+        system_key IN ('name', 'company', 'owner', 'phone', 'source', 'email', 'state', 'city')
+    ),
     label VARCHAR(100) NOT NULL,
     field_type VARCHAR(20) NOT NULL CHECK(
         field_type IN(
             'short_answer',
             'long_answer',
+            'date',
+            'url',
+            'phone',
+            'email',
             'number',
             'dropdown_single',
             'dropdown_multi',
@@ -19,6 +26,7 @@ CREATE TABLE IF NOT EXISTS crm.form_fields(
     is_required BOOLEAN NOT NULL DEFAULT false,
     is_visible BOOLEAN NOT NULL DEFAULT true,
     sort_order INT NOT NULL DEFAULT 0,
+    is_default BOOLEAN NOT NULL DEFAULT false,
     is_delete_locked BOOLEAN NOT NULL DEFAULT false,
     is_required_locked BOOLEAN NOT NULL DEFAULT false,
     is_visible_locked BOOLEAN NOT NULL DEFAULT false,

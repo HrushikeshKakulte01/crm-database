@@ -16,8 +16,8 @@ CREATE TABLE IF NOT EXISTS crm.issues_states(
 -- the fields for each stage's form which the admin adds(eg. Notes, attachments, etc)
 CREATE TABLE IF NOT EXISTS crm.issues_form_fields(      
     field_id UUID PRIMARY KEY DEFAULT uuidv7(),
-    organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
-    state_id UUID NOT NULL REFERENCES crm.issues_states(state_id) ON DELETE CASCADE,
+    organization_id UUID NOT NULL,
+    state_id UUID NOT NULL,
     system_key VARCHAR(20) CHECK (system_key IN ('notes', 'documents')),
     label VARCHAR(100) NOT NULL,
     field_type VARCHAR(20) NOT NULL CHECK(
@@ -44,9 +44,15 @@ CREATE TABLE IF NOT EXISTS crm.issues_form_fields(
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
-    UNIQUE (state_id, label),
     FOREIGN KEY (organization_id, state_id)
-        REFERENCES crm.issues_states(organization_id, state_id) ON DELETE CASCADE
+        REFERENCES crm.issues_states(organization_id, state_id) ON DELETE CASCADE,
+    CHECK (
+        field_type NOT IN ('dropdown_single', 'dropdown_multi')
+        OR (options IS NOT NULL AND jsonb_typeof(options) = 'array')
+    ),
+    CHECK (is_default = (system_key IS NOT NULL)),
+    CHECK (NOT is_visible_locked OR is_visible),
+    UNIQUE (state_id, system_key)   -- one Notes and one Documents row per stage
 );
 
 -- issues from the agent's POV
@@ -92,7 +98,7 @@ CREATE TABLE IF NOT EXISTS crm.issues_pipeline_progress(
     CHECK (transition_type <> 'backward' OR NULLIF(BTRIM(reason), '') IS NOT NULL),  -- backward move needs a non-blank reason
     CHECK ((transition_type = 'initial') = (from_state_id IS NULL)),                  -- only the first entry has no from_state_id
     CHECK (from_state_id IS NULL OR from_state_id <> state_id)                          -- a move can't land in the state it left
-    CHECK (jsonb_typeof(data) = 'object')
+    CHECK (jsonb_typeof(data) = 'object')                              -- accepts the data in json form {"name": "hrushikesh"}
 );
 
 -- a log for every changed assignee
@@ -115,7 +121,38 @@ CREATE TABLE IF NOT EXISTS crm.issues_assignments(
     CHECK (unassigned_at IS NULL OR unassigned_at >= assigned_at)
 );
 
+CREATE TABLE IF NOT EXISTS crm.issues_notes(
+    note_id UUID PRIMARY KEY DEFAULT uuidv7(),
+    organization_id UUID NOT NULL,
+    issue_id NOT NULL,
+    entry_id NOT NULL,
+    body TEXT NOT NULL CHECK (NULLIF(BTRIM(body), '') IS NOT NULL),
+    created_by UUID NOT NULL REFERENCES core.agents(agent_id),
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ
+    FOREIGN KEY (organization_id, issue_id, entry_id)
+        REFERENCES crm.issues_pipeline_progress(organization_id, issue_id, entry_id)
+);
+
+CREATE TABLE IF NOT EXISTS crm.issues_documents(
+    document_id UUID PRIMARY KEY DEFAULT uuidv7(),
+    organization_id NOT NULL,
+    issues_id NOT NULL,
+    entry_id NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    storage_key TEXT NOT NULL,
+    mime_type VARCHAR(100) NOT NULL,
+    uploaded_by UUID NOT NULL REFERENCES core.agents(agent_id),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    FOREIGN KEY (organization_id, issues_id, entry_id)
+        REFERENCES crm.issues_pipeline_progress(organization_id, issue_id, entry_id)
+);
+
 -- +goose Down
+DROP TABLE IF EXISTS crm.issues_documents;
+DROP TABLE IF EXISTS crm.issues_notes;
 DROP TABLE IF EXISTS crm.issues_assignments;
 DROP TABLE IF EXISTS crm.issues_pipeline_progress;
 DROP TABLE IF EXISTS crm.issues;
