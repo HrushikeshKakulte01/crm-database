@@ -16,9 +16,11 @@ CREATE TABLE IF NOT EXISTS crm.quotations(
             'declined_client',
         )
     ),
+    -- subtotal means the total price before any tax, discount and any other charges
     subtotal NUMERIC(14, 2) NOT NULL CHECK(
         subtotal >= 0
     ),
+    -- total means the total amount of the quotation
     total NUMERIC(14, 2) NOT NULL CHECK(
         total >= 0
     ),
@@ -32,7 +34,7 @@ CREATE TABLE IF NOT EXISTS crm.quotations(
     FOREIGN KEY (organization_id, lead_id)
         REFERENCES crm.leads(organiuzation_id, lead_id),
     FOREIGN KEY (organization_id, issue_id, lead_id)
-        REFERENCES crm.leads(organiuzation_id, issues_id, lead_id),
+        REFERENCES crm.issues(organiuzation_id, issues_id, lead_id),
     FOREIGN KEY (organization_id, replaces_quotation_id)
         REFERENCES crm.quotations(organization_id, quotation_id),
     CHECK (replaces_quotation_id IS NULL OR replaces_quotation_id <> quotation_id)
@@ -57,6 +59,7 @@ CREATE TABLE IF NOT EXISTS crm.quotation_items(
         REFERENCES crm.quotation(organization_id, quotation_id)
 );
 
+-- This table adds up the tax, discount and other charges.
 CREATE TABLE IF NOT EXISTS crm.quotation_adjustments(
     adjustment_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL,
@@ -88,6 +91,7 @@ CREATE TABLE IF NOT EXISTS crm.quotation_adjustments(
     CHECK (value_type <> 'percent' OR value <= 100)
 );
 
+-- keepoing a log of the quotation sent through the staes(eg. sent_internal, sent_client, accepted_internal, accepted_client)
 CREATE TABLE IF NOT EXISTS crm.quotation_status_history(
     history_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL,

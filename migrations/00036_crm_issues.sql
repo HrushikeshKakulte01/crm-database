@@ -6,11 +6,13 @@ CREATE TABLE IF NOT EXISTS crm.issues_states(
     name VARCHAR(100) NOT NULL,
     group_type VARCHAR(10) NOT NULL CHECK (group_type IN ('enquiry', 'order')),
     sort_order INT NOT NULL DEFAULT 0,
+    is_default BOOLEAN NOT NULL DEFAULT false,
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
     UNIQUE (organization_id, name),
-    UNIQUE (organization_id, state_id)
+    UNIQUE (organization_id, state_id),
+    CHECK (NOT is_default OR is_active)
 );
 
 -- the fields for each stage's form which the admin adds(eg. Notes, attachments, etc)
@@ -30,29 +32,31 @@ CREATE TABLE IF NOT EXISTS crm.issues_form_fields(
             'dropdown_single',
             'dropdown_multi',
             'file_upload',
-            'quotation'
+            'quotation',
+            'product'
         )
     ),
     options JSONB,
-    is_required BOOLEAN NOT NULL DEFAULT false,
     is_visible BOOLEAN NOT NULL DEFAULT true,
     sort_order INT NOT NULL DEFAULT 0,
     is_default BOOLEAN NOT NULL DEFAULT false,
-    is_delete_locked BOOLEAN NOT NULL DEFAULT false,
-    is_required_locked BOOLEAN NOT NULL DEFAULT false,
     is_visible_locked BOOLEAN NOT NULL DEFAULT false,
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
+    -- this is to verify that the stage is of the correct organization
     FOREIGN KEY (organization_id, state_id)
         REFERENCES crm.issues_states(organization_id, state_id) ON DELETE CASCADE,
+    -- checks that the dropdown should not be empty
     CHECK (
-        field_type NOT IN ('dropdown_single', 'dropdown_multi')
-        OR (options IS NOT NULL AND jsonb_typeof(options) = 'array')
+    field_type NOT IN ('dropdown_single', 'dropdown_multi')
+    OR (CASE WHEN jsonb_typeof(options) = 'array'
+             THEN jsonb_array_length(options) > 0
+             ELSE false END)
     ),
     CHECK (is_default = (system_key IS NOT NULL)),
     CHECK (NOT is_visible_locked OR is_visible),
-    UNIQUE (state_id, system_key)   -- one Notes and one Documents row per stage
+    UNIQUE (state_id, system_key)
 );
 
 -- issues from the agent's POV
@@ -60,7 +64,7 @@ CREATE TABLE IF NOT EXISTS crm.issues(
     issue_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
     lead_id UUID NOT NULL, 
-    current_state_id UUID NOT NULL REFERENCES crm.issues_states(state_id),
+    current_state_id UUID NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT,      
     due_date DATE,                                         
@@ -122,11 +126,11 @@ CREATE TABLE IF NOT EXISTS crm.issues_assignments(
 );
 
 -- note history for an issue 
-CREATE TABLE IF NOT EXISTS crm.issues_notes(
+CREATE TABLE IF NOT EXISTS crm.issue_notes(
     note_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL,
-    issue_id NOT NULL,
-    entry_id NOT NULL,
+    issue_id UUID NOT NULL,
+    entry_id UUID NOT NULL,
     body TEXT NOT NULL CHECK (NULLIF(BTRIM(body), '') IS NOT NULL),
     created_by UUID NOT NULL REFERENCES core.agents(agent_id),
     is_active BOOLEAN NOT NULL DEFAULT true,
