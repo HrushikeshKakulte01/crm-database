@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS crm.issues_pipeline_progress(
     moved_by UUID REFERENCES core.agents(agent_id),              -- who moved the issue into this state
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
+        UNIQUE (organization_id, issue_id, entry_id),
     FOREIGN KEY (organization_id, issue_id)
         REFERENCES crm.issues(organization_id, issue_id),
     FOREIGN KEY (organization_id, state_id)
@@ -126,7 +127,7 @@ CREATE TABLE IF NOT EXISTS crm.issues_assignments(
 );
 
 -- note history for an issue 
-CREATE TABLE IF NOT EXISTS crm.issue_notes(
+CREATE TABLE IF NOT EXISTS crm.issues_notes(
     note_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL,
     issue_id UUID NOT NULL,
@@ -142,9 +143,9 @@ CREATE TABLE IF NOT EXISTS crm.issue_notes(
 
 CREATE TABLE IF NOT EXISTS crm.issues_documents(
     document_id UUID PRIMARY KEY DEFAULT uuidv7(),
-    organization_id NOT NULL,
-    issues_id NOT NULL,
-    entry_id NOT NULL,
+    organization_id UUID NOT NULL,
+    issues_id UUID NOT NULL,
+    entry_id UUID NOT NULL,
     file_name VARCHAR(255) NOT NULL,
     storage_key TEXT NOT NULL,
     mime_type VARCHAR(100) NOT NULL,

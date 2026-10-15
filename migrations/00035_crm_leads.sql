@@ -19,7 +19,6 @@ CREATE TABLE IF NOT EXISTS crm.form_fields(
             'number',
             'dropdown_single',
             'dropdown_multi',
-            'email',
             'agent',
             'state'
         )
@@ -38,7 +37,8 @@ CREATE TABLE IF NOT EXISTS crm.form_fields(
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
-    UNIQUE (organization_id, label)
+    UNIQUE (organization_id, label),
+    UNIQUE (organization_id, system_key),
     CHECK (system_key NOT IN ('name', 'owner', 'phone', 'source')
        OR (is_required_locked AND is_visible_locked))
 );
@@ -65,6 +65,6 @@ CREATE TABLE IF NOT EXISTS crm.leads(
     UNIQUE (organization_id, user_id),
     UNIQUE (organization_id, lead_id)
 );
--- +goose Dow
+-- +goose Down
 DROP TABLE IF EXISTS crm.leads;
 DROP TABLE IF EXISTS crm.form_fields;
