@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS crm.form_fields(
     field_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
     -- system_key stores the by default fields
+    from_type VARCHAR(50) NOT NULL CHECK (form_type IN ('lead', 'customer')),
     system_key VARCHAR(20) CHECK (
         system_key IN ('name', 'company', 'owner', 'phone', 'source', 'email', 'state', 'city')
     ),
@@ -18,15 +19,13 @@ CREATE TABLE IF NOT EXISTS crm.form_fields(
             'email',
             'number',
             'dropdown_single',
-            'dropdown_multi',
-            'agent',
-            'state'
+            'dropdown_multi'
         )
     ),
-    -- label is a name for the field type selected
+    -- label is the name for the field type selected
     label VARCHAR(100) NOT NULL,
-    -- option stores the list of the options
-    options JSONB,  
+    -- option stores the list of the options for the dropdown field
+    options JSONB,
     is_required BOOLEAN NOT NULL DEFAULT false,
     is_visible BOOLEAN NOT NULL DEFAULT true,
     sort_order INT NOT NULL DEFAULT 0,

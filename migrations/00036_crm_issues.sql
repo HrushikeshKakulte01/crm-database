@@ -3,8 +3,8 @@
 CREATE TABLE IF NOT EXISTS crm.issues_states(
     state_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
-    name VARCHAR(100) NOT NULL,
     group_type VARCHAR(10) NOT NULL CHECK (group_type IN ('enquiry', 'order')),
+    name VARCHAR(100) NOT NULL,
     sort_order INT NOT NULL DEFAULT 0,
     is_default BOOLEAN NOT NULL DEFAULT false,
     is_active BOOLEAN NOT NULL DEFAULT true,
@@ -16,14 +16,23 @@ CREATE TABLE IF NOT EXISTS crm.issues_states(
 );
 
 -- the fields for each stage's form which the admin adds(eg. Notes, attachments, etc)
-CREATE TABLE IF NOT EXISTS crm.issues_form_fields(      
+CREATE TABLE IF NOT EXISTS crm.issues_form_fields(
     field_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL,
-    state_id UUID NOT NULL,
-    system_key VARCHAR(20) CHECK (system_key IN ('notes', 'documents')),
+    -- NULL = the Create issue form, otherwise the form of that stage
+    state_id UUID,
+    system_key VARCHAR(20) CHECK (
+        system_key IN (
+            'notes', 'documents',
+            'name', 'description', 'stage', 'assignees', 'due_date', 'lead'
+        )
+    ),
     label VARCHAR(100) NOT NULL,
-    field_type VARCHAR(20) NOT NULL CHECK(
-        field_type IN(
+    -- 'stage' = pick a stage, 'assignees' = pick several agents,
+    -- 'lead' = pick a lead / customer. only the built-in Create issue
+    -- fields use these three.
+    field_type VARCHAR(20) NOT NULL CHECK (
+        field_type IN (
             'short_answer',
             'long_answer',
             'date',
@@ -33,30 +42,38 @@ CREATE TABLE IF NOT EXISTS crm.issues_form_fields(
             'dropdown_multi',
             'file_upload',
             'quotation',
-            'product'
+            'stage',
+            'assignees',
+            'lead'
         )
     ),
+    -- choices for a dropdown: [{"value": "price", "label": "Price too high"}, ...]
     options JSONB,
+    is_required BOOLEAN NOT NULL DEFAULT false,
     is_visible BOOLEAN NOT NULL DEFAULT true,
     sort_order INT NOT NULL DEFAULT 0,
     is_default BOOLEAN NOT NULL DEFAULT false,
+    is_delete_locked BOOLEAN NOT NULL DEFAULT false,
+    is_required_locked BOOLEAN NOT NULL DEFAULT false,
     is_visible_locked BOOLEAN NOT NULL DEFAULT false,
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
-    -- this is to verify that the stage is of the correct organization
+    -- a stage must exist in the same organization (skipped for the Create
+    -- issue form, where state_id is NULL); deleting a stage deletes its fields
     FOREIGN KEY (organization_id, state_id)
         REFERENCES crm.issues_states(organization_id, state_id) ON DELETE CASCADE,
-    -- checks that the dropdown should not be empty
+    -- a dropdown must carry a list of choices
     CHECK (
-    field_type NOT IN ('dropdown_single', 'dropdown_multi')
-    OR (CASE WHEN jsonb_typeof(options) = 'array'
-             THEN jsonb_array_length(options) > 0
-             ELSE false END)
+        field_type NOT IN ('dropdown_single', 'dropdown_multi')
+        OR (options IS NOT NULL AND jsonb_typeof(options) = 'array')
     ),
+    -- built-in fields are exactly the default ones
     CHECK (is_default = (system_key IS NOT NULL)),
-    CHECK (NOT is_visible_locked OR is_visible),
-    UNIQUE (state_id, system_key)
+    -- notes and documents belong to a stage form, the other keys to the Create issue form
+    CHECK (system_key IS NULL OR ((system_key IN ('notes', 'documents')) = (state_id IS NOT NULL))),
+    -- a field whose visibility is locked can't be hidden
+    CHECK (NOT is_visible_locked OR is_visible)
 );
 
 -- issues from the agent's POV
