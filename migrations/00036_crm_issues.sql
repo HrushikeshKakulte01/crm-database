@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS crm.issues_states(
     CHECK (NOT is_default OR is_active)
 );
 
--- the fields for each stage's form which the admin adds(eg. Notes, attachments, etc)
+-- the fields for each stage's form which the admin adds(eg. Notes, documents, etc)
 CREATE TABLE IF NOT EXISTS crm.issues_form_fields(
     field_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL,
@@ -33,7 +33,6 @@ CREATE TABLE IF NOT EXISTS crm.issues_form_fields(
             'lead'
         )
     ),
-    label VARCHAR(100) NOT NULL,
     -- list of field types a field can have
     field_type VARCHAR(20) NOT NULL CHECK (
         field_type IN (
@@ -51,6 +50,7 @@ CREATE TABLE IF NOT EXISTS crm.issues_form_fields(
             'lead'
         )
     ),
+    label VARCHAR(100) NOT NULL,
     -- choices for a dropdown
     options JSONB,
     is_required BOOLEAN NOT NULL DEFAULT false,
@@ -63,8 +63,7 @@ CREATE TABLE IF NOT EXISTS crm.issues_form_fields(
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
-    -- a stage must exist in the same organization (skipped for the Create
-    -- issue form, where state_id is NULL); deleting a stage deletes its fields
+    -- a stage must exist in the same organization
     FOREIGN KEY (organization_id, state_id)
         REFERENCES crm.issues_states(organization_id, state_id) ON DELETE CASCADE,
     -- a dropdown must carry a list of choices
@@ -75,20 +74,23 @@ CREATE TABLE IF NOT EXISTS crm.issues_form_fields(
     -- built-in fields are exactly the default ones
     CHECK (is_default = (system_key IS NOT NULL)),
     -- notes and documents belong to a stage form, the other keys to the Create issue form
-    CHECK (system_key IS NULL OR ((system_key IN ('notes', 'documents')) = (state_id IS NOT NULL))),
-    -- a field whose visibility is locked can't be hidden
-    CHECK (NOT is_visible_locked OR is_visible)
+    CHECK (system_key IS NULL OR ((system_key IN ('notes', 'documents')) = (state_id IS NOT NULL)))
 );
 
--- issues from the agent's POV
+-- issues from the agent's POV(issues, create issue, issue details)
 CREATE TABLE IF NOT EXISTS crm.issues(      
     issue_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
-    lead_id UUID NOT NULL, 
+    lead_id UUID NOT NULL,
+    -- the state where the issue is currently present
     current_state_id UUID NOT NULL,
+    -- issues title
     title VARCHAR(255) NOT NULL,
-    description TEXT,      
-    due_date DATE,                                         
+    --issues discription
+    description TEXT,
+    -- due date of the issue
+    due_date DATE,
+    -- this may be the owner or an owner                                    
     created_by UUID REFERENCES core.agents(agent_id),
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -107,7 +109,9 @@ CREATE TABLE IF NOT EXISTS crm.issues_pipeline_progress(
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
     issue_id UUID NOT NULL REFERENCES crm.issues(issue_id) ON DELETE CASCADE,
     state_id UUID NOT NULL REFERENCES crm.issues_states(state_id),
-    from_state_id UUID REFERENCES crm.issues_states(state_id),   -- the state the issues came from(null for the initial state)
+    -- the state the issues came from(null for the initial state)
+    from_state_id UUID REFERENCES crm.issues_states(state_id),
+    -- moves of the state 
     transition_type VARCHAR(10) NOT NULL CHECK (transition_type IN (
             'initial', 
             'forward', 
