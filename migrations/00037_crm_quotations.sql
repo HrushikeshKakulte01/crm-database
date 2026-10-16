@@ -104,12 +104,22 @@ CREATE TABLE IF NOT EXISTS crm.quotation_status_history(
     FOREIGN KEY (organization_id, quotation_id)
         REFERENCES crm.quotations(organization_id, quotation_id),
     CHECK (to_status IN (
-        'new', 'sent_internal', 'approved_internal', 'declined_internal',
-        'sent_client', 'approved_client', 'declined_client'
+        'new', 
+        'sent_internal', 
+        'approved_internal', 
+        'declined_internal',
+        'sent_client', 
+        'approved_client', 
+        'declined_client'
     )),
     CHECK (from_status IS NULL OR from_status IN (
-        'new', 'sent_internal', 'approved_internal', 'declined_internal',
-        'sent_client', 'approved_client', 'declined_client'
+        'new', 
+        'sent_internal', 
+        'approved_internal', 
+        'declined_internal',
+        'sent_client', 
+        'approved_client', 
+        'declined_client'
     )),
     CHECK (from_status IS NULL OR from_status <> to_status)
 );

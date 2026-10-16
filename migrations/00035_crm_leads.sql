@@ -6,7 +6,15 @@ CREATE TABLE IF NOT EXISTS crm.form_fields(
     -- system_key stores the by default fields
     from_type VARCHAR(50) NOT NULL CHECK (form_type IN ('lead', 'customer')),
     system_key VARCHAR(20) CHECK (
-        system_key IN ('name', 'company', 'owner', 'phone', 'source', 'email', 'state', 'city')
+        system_key IN (
+                'name', 
+                'company', 
+                'owner', 
+                'phone', 
+                'source', 
+                'email', 
+                'state', 
+                'city')
     ),
     -- field_type shows the types of fields that a admin can choose from
     field_type VARCHAR(20) NOT NULL CHECK(

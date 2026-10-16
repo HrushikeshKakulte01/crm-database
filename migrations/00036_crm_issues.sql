@@ -23,14 +23,18 @@ CREATE TABLE IF NOT EXISTS crm.issues_form_fields(
     state_id UUID,
     system_key VARCHAR(20) CHECK (
         system_key IN (
-            'notes', 'documents',
-            'name', 'description', 'stage', 'assignees', 'due_date', 'lead'
+            'notes', 
+            'documents',
+            'name', 
+            'description', 
+            'stage', 
+            'assignees', 
+            'due_date', 
+            'lead'
         )
     ),
     label VARCHAR(100) NOT NULL,
-    -- 'stage' = pick a stage, 'assignees' = pick several agents,
-    -- 'lead' = pick a lead / customer. only the built-in Create issue
-    -- fields use these three.
+    -- list of field types a field can have
     field_type VARCHAR(20) NOT NULL CHECK (
         field_type IN (
             'short_answer',
@@ -47,7 +51,7 @@ CREATE TABLE IF NOT EXISTS crm.issues_form_fields(
             'lead'
         )
     ),
-    -- choices for a dropdown: [{"value": "price", "label": "Price too high"}, ...]
+    -- choices for a dropdown
     options JSONB,
     is_required BOOLEAN NOT NULL DEFAULT false,
     is_visible BOOLEAN NOT NULL DEFAULT true,
@@ -104,7 +108,11 @@ CREATE TABLE IF NOT EXISTS crm.issues_pipeline_progress(
     issue_id UUID NOT NULL REFERENCES crm.issues(issue_id) ON DELETE CASCADE,
     state_id UUID NOT NULL REFERENCES crm.issues_states(state_id),
     from_state_id UUID REFERENCES crm.issues_states(state_id),   -- the state the issues came from(null for the initial state)
-    transition_type VARCHAR(10) NOT NULL CHECK (transition_type IN ('initial', 'forward', 'backward')), -- the state transition means the issue going forward or backward in the pipeline
+    transition_type VARCHAR(10) NOT NULL CHECK (transition_type IN (
+            'initial', 
+            'forward', 
+            'backward'
+    )), -- the state transition means the issue going forward or backward in the pipeline
     reason TEXT,                                    -- reason for why the move happened, especially for backward moves                                              
     data JSONB NOT NULL DEFAULT '{}'::jsonb,
     moved_by UUID REFERENCES core.agents(agent_id),              -- who moved the issue into this state
