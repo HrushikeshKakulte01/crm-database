@@ -111,15 +111,18 @@ CREATE TABLE IF NOT EXISTS crm.issues_pipeline_progress(
     state_id UUID NOT NULL REFERENCES crm.issues_states(state_id),
     -- the state the issues came from(null for the initial state)
     from_state_id UUID REFERENCES crm.issues_states(state_id),
-    -- moves of the state 
+    -- tells how the issue arrived in a state
     transition_type VARCHAR(10) NOT NULL CHECK (transition_type IN (
             'initial', 
             'forward', 
             'backward'
-    )), -- the state transition means the issue going forward or backward in the pipeline
-    reason TEXT,                                    -- reason for why the move happened, especially for backward moves                                              
+    )),
+    -- reason why the move happened and reason is compulsary for a backward move(eg. from negotiation to new    )
+    reason TEXT,
+    -- stores the answer for the custom field                                                    
     data JSONB NOT NULL DEFAULT '{}'::jsonb,
-    moved_by UUID REFERENCES core.agents(agent_id),              -- who moved the issue into this state
+    -- who moved the issue into this state
+    moved_by UUID REFERENCES core.agents(agent_id),             
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
         UNIQUE (organization_id, issue_id, entry_id),
@@ -143,6 +146,7 @@ CREATE TABLE IF NOT EXISTS crm.issues_assignments(
     agent_id UUID NOT NULL REFERENCES core.agents(agent_id),
     assigned_by UUID NOT NULL REFERENCES core.agents(agent_id),
     assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- the state visit while someone was assigned
     entry_id UUID NOT NULL,  
     unassigned_by UUID REFERENCES core.agents(agent_id),
     unassigned_at TIMESTAMPTZ,

@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS crm.quotations(
     subtotal NUMERIC(14, 2) NOT NULL CHECK(
         subtotal >= 0
     ),
-    -- total means the total amount of the quotation
+    -- total means the total amount of the quotation after taxes, discount and other charges
     total NUMERIC(14, 2) NOT NULL CHECK(
         total >= 0
     ),
