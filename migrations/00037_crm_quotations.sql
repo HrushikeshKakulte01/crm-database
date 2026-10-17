@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS crm.quotations(
     quotation_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
     lead_id UUID NOT NULL,
-    issue_id UUID NOT NULL REFERENCES crm.issues(issue_id),
+    issue_id UUID NOT NULL,
     status varchar(20) NOT NULL DEFAULT 'new' CHECK(
         status IN (
             'new',
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS crm.quotation_items(
     quantity INT NOT NULL DEFAULT 1 CHECK(
         quantity > 0
     ),
-    amount NUMERIC(14, 2) GENERATED ALWAYS AS (price * quantity) STORED,
+    amount NUMERIC(18, 2) GENERATED ALWAYS AS (price * quantity) STORED,
     sort_order INT NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     FOREIGN KEY (organization_id, quotation_id)
@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS crm.quotation_adjustments(
     value NUMERIC(14, 2) NOT NULL CHECK(
         value >= 0
     ),
-    amount NUMERIC(14, 2) NOT NULL CHECK(
+    amount NUMERIC(18, 2) NOT NULL CHECK(
         amount >= 0
     ),
     sort_order INT NOT NULL DEFAULT 0,
@@ -89,6 +89,7 @@ CREATE TABLE IF NOT EXISTS crm.quotation_adjustments(
     FOREIGN KEY (organization_id, quotation_id)
         REFERENCES crm.quotations(organization_id, quotation_id),
     CHECK (value_type <> 'percentage' OR value <= 100)
+    CHECK (value_type <> 'fixed' OR amount = value),
 );
 
 -- keepoing a log of the quotation sent through the staes(eg. sent_internal, sent_client, accepted_internal, accepted_client)

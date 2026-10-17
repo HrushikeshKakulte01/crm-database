@@ -2,7 +2,7 @@
 -- admin issues settings for stage and orders
 CREATE TABLE IF NOT EXISTS crm.issues_states(
     state_id UUID PRIMARY KEY DEFAULT uuidv7(),
-    organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
+    organization_id UUID NOT NULL,
     group_type VARCHAR(10) NOT NULL CHECK (group_type IN ('enquiry', 'order')),
     name VARCHAR(100) NOT NULL,
     sort_order INT NOT NULL DEFAULT 0,
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS crm.issues_states(
 -- the fields for each stage's form which the admin adds(eg. Notes, documents, etc)
 CREATE TABLE IF NOT EXISTS crm.issues_form_fields(
     field_id UUID PRIMARY KEY DEFAULT uuidv7(),
-    organization_id UUID NOT NULL,
+    organization_id UUID NOT NULL  REFERENCES core.organizations(organization_id),
     -- NULL = the Create issue form, otherwise the form of that stage
     state_id UUID,
     system_key VARCHAR(20) CHECK (
@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS crm.issues_form_fields(
 -- issues from the agent's POV(issues, create issue, issue details)
 CREATE TABLE IF NOT EXISTS crm.issues(      
     issue_id UUID PRIMARY KEY DEFAULT uuidv7(),
-    organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
+    organization_id UUID NOT NULL,
     lead_id UUID NOT NULL,
     -- the state where the issue is currently present
     current_state_id UUID NOT NULL,
@@ -106,8 +106,8 @@ CREATE TABLE IF NOT EXISTS crm.issues(
 -- history of the states for an issue
 CREATE TABLE IF NOT EXISTS crm.issues_pipeline_progress(
     entry_id UUID PRIMARY KEY DEFAULT uuidv7(),
-    organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
-    issue_id UUID NOT NULL REFERENCES crm.issues(issue_id) ON DELETE CASCADE,
+    organization_id UUID NOT NULL,
+    issue_id UUID NOT NULL,
     state_id UUID NOT NULL REFERENCES crm.issues_states(state_id),
     -- the state the issues came from(null for the initial state)
     from_state_id UUID REFERENCES crm.issues_states(state_id),
@@ -177,7 +177,7 @@ CREATE TABLE IF NOT EXISTS crm.issues_notes(
 CREATE TABLE IF NOT EXISTS crm.issues_documents(
     document_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL,
-    issues_id UUID NOT NULL,
+    issue_id UUID NOT NULL,
     entry_id UUID NOT NULL,
     file_name VARCHAR(255) NOT NULL,
     storage_key TEXT NOT NULL,
@@ -185,7 +185,7 @@ CREATE TABLE IF NOT EXISTS crm.issues_documents(
     uploaded_by UUID NOT NULL REFERENCES core.agents(agent_id),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    FOREIGN KEY (organization_id, issues_id, entry_id)
+    FOREIGN KEY (organization_id, issue_id, entry_id)
         REFERENCES crm.issues_pipeline_progress(organization_id, issue_id, entry_id)
 );
 

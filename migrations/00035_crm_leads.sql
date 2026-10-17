@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS crm.form_fields(
     field_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
     -- system_key stores the by default fields
-    from_type VARCHAR(50) NOT NULL CHECK (form_type IN ('lead', 'customer')),
+    form_type VARCHAR(50) NOT NULL CHECK (form_type IN ('lead', 'customer')),
     system_key VARCHAR(20) CHECK (
         system_key IN (
                 'name', 
@@ -44,10 +44,11 @@ CREATE TABLE IF NOT EXISTS crm.form_fields(
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
-    UNIQUE (organization_id, label),
-    UNIQUE (organization_id, system_key),
+    UNIQUE (organization_id, form_type, label),
+    UNIQUE (organization_id, form_type, system_key),
+    CHECK (is_default = (system_key IS NOT NULL)),
     CHECK (system_key NOT IN ('name', 'owner', 'phone', 'source')
-       OR (is_required_locked AND is_visible_locked))
+       OR (is_required AND is_visible AND is_required_locked AND is_visible_locked))
 );
 
 -- stores leads and converts it to customers for the organization
@@ -70,7 +71,9 @@ CREATE TABLE IF NOT EXISTS crm.leads(
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
     UNIQUE (organization_id, user_id),
-    UNIQUE (organization_id, lead_id)
+    UNIQUE (organization_id, lead_id),
+    CHECK (is_converted = (converted_at IS NOT NULL)),
+    CHECK (converted_by IS NULL OR is_converted)
 );
 -- +goose Down
 DROP TABLE IF EXISTS crm.leads;
