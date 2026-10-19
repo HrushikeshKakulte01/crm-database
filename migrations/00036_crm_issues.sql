@@ -1,4 +1,30 @@
 -- +goose Up
+CREATE TYPE crm.issues_form_field_system_key AS ENUM (
+    'notes',
+    'documents',
+    'name',
+    'description',
+    'stage',
+    'assignees',
+    'due_date',
+    'lead'
+);
+
+CREATE TYPE crm.issues_field_type AS ENUM (
+    'short_answer',
+    'long_answer',
+    'date',
+    'url',
+    'number',
+    'dropdown_single',
+    'dropdown_multi',
+    'file_upload',
+    'quotation',
+    'stage',
+    'assignees',
+    'lead'
+);
+
 -- admin issues settings for stage and orders
 CREATE TABLE IF NOT EXISTS crm.issues_states(
     state_id UUID PRIMARY KEY DEFAULT uuidv7(),
@@ -10,7 +36,6 @@ CREATE TABLE IF NOT EXISTS crm.issues_states(
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
-    UNIQUE (organization_id, name),
     UNIQUE (organization_id, state_id),
     CHECK (NOT is_default OR is_active)
 );
@@ -21,35 +46,9 @@ CREATE TABLE IF NOT EXISTS crm.issues_form_fields(
     organization_id UUID NOT NULL  REFERENCES core.organizations(organization_id),
     -- NULL = the Create issue form, otherwise the form of that stage
     state_id UUID,
-    system_key VARCHAR(20) CHECK (
-        system_key IN (
-            'notes', 
-            'documents',
-            'name', 
-            'description', 
-            'stage', 
-            'assignees', 
-            'due_date', 
-            'lead'
-        )
-    ),
+    system_key crm.issues_form_field_system_key,
     -- list of field types a field can have
-    field_type VARCHAR(20) NOT NULL CHECK (
-        field_type IN (
-            'short_answer',
-            'long_answer',
-            'date',
-            'url',
-            'number',
-            'dropdown_single',
-            'dropdown_multi',
-            'file_upload',
-            'quotation',
-            'stage',
-            'assignees',
-            'lead'
-        )
-    ),
+    field_type crm.issues_field_type NOT NULL,
     label VARCHAR(100) NOT NULL,
     -- choices for a dropdown
     options JSONB,
@@ -74,11 +73,13 @@ CREATE TABLE IF NOT EXISTS crm.issues_form_fields(
     -- built-in fields are exactly the default ones
     CHECK (is_default = (system_key IS NOT NULL)),
     -- notes and documents belong to a stage form, the other keys to the Create issue form
-    CHECK (system_key IS NULL OR ((system_key IN ('notes', 'documents')) = (state_id IS NOT NULL)))
+    CHECK (system_key IS NULL OR ((system_key IN ('notes', 'documents')) = (state_id IS NOT NULL))),
+    -- a field that can't be hidden must be visible
+    CHECK (NOT is_visible_locked OR is_visible)
 );
 
 -- issues from the agent's POV(issues, create issue, issue details)
-CREATE TABLE IF NOT EXISTS crm.issues(      
+CREATE TABLE IF NOT EXISTS crm.issues(
     issue_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL,
     lead_id UUID NOT NULL,
@@ -86,11 +87,13 @@ CREATE TABLE IF NOT EXISTS crm.issues(
     current_state_id UUID NOT NULL,
     -- issues title
     title VARCHAR(255) NOT NULL,
-    --issues discription
+    -- issues description
     description TEXT,
     -- due date of the issue
     due_date DATE,
-    -- this may be the owner or an owner                                    
+    -- answers for the fields the admin added to the Create issue form, keyed by field_id
+    custom_fields JSONB NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(custom_fields) = 'object'),
+    -- the agent who created the issue
     created_by UUID REFERENCES core.agents(agent_id),
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -101,7 +104,7 @@ CREATE TABLE IF NOT EXISTS crm.issues(
         REFERENCES crm.leads(organization_id, lead_id),
     FOREIGN KEY (organization_id, current_state_id)
         REFERENCES crm.issues_states(organization_id, state_id)
-); 
+);
 
 -- history of the states for an issue
 CREATE TABLE IF NOT EXISTS crm.issues_pipeline_progress(
@@ -113,16 +116,16 @@ CREATE TABLE IF NOT EXISTS crm.issues_pipeline_progress(
     from_state_id UUID REFERENCES crm.issues_states(state_id),
     -- tells how the issue arrived in a state
     transition_type VARCHAR(10) NOT NULL CHECK (transition_type IN (
-            'initial', 
-            'forward', 
+            'initial',
+            'forward',
             'backward'
     )),
     -- reason why the move happened and reason is compulsary for a backward move(eg. from negotiation to new    )
     reason TEXT,
-    -- stores the answer for the custom field                                                    
+    -- stores the answer for the custom field
     data JSONB NOT NULL DEFAULT '{}'::jsonb,
     -- who moved the issue into this state
-    moved_by UUID REFERENCES core.agents(agent_id),             
+    moved_by UUID REFERENCES core.agents(agent_id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
         UNIQUE (organization_id, issue_id, entry_id),
@@ -147,19 +150,16 @@ CREATE TABLE IF NOT EXISTS crm.issues_assignments(
     assigned_by UUID NOT NULL REFERENCES core.agents(agent_id),
     assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     -- the state visit while someone was assigned
-    entry_id UUID NOT NULL,  
-    unassigned_by UUID REFERENCES core.agents(agent_id),
-    unassigned_at TIMESTAMPTZ,
-    unassign_reason TEXT,
+    entry_id UUID NOT NULL,
+    -- an agent can be assigned to an issue only once
+    UNIQUE (issue_id, agent_id),
     FOREIGN KEY (organization_id, issue_id)
         REFERENCES crm.issues(organization_id, issue_id),
     FOREIGN KEY (organization_id, issue_id, entry_id)
-        REFERENCES crm.issues_pipeline_progress(organization_id, issue_id, entry_id),
-    CHECK ((unassigned_at IS NULL) = (unassigned_by IS NULL)),
-    CHECK (unassigned_at IS NULL OR unassigned_at >= assigned_at)
+        REFERENCES crm.issues_pipeline_progress(organization_id, issue_id, entry_id)
 );
 
--- note history for an issue 
+-- note history for an issue
 CREATE TABLE IF NOT EXISTS crm.issues_notes(
     note_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL,
@@ -197,3 +197,5 @@ DROP TABLE IF EXISTS crm.issues_pipeline_progress;
 DROP TABLE IF EXISTS crm.issues;
 DROP TABLE IF EXISTS crm.issues_form_fields;
 DROP TABLE IF EXISTS crm.issues_states;
+DROP TYPE IF EXISTS crm.issues_field_type;
+DROP TYPE IF EXISTS crm.issues_form_field_system_key;

@@ -1,21 +1,21 @@
 -- +goose Up
+-- statuses of the quotation
+CREATE TYPE crm.quotation_status AS ENUM (
+    'new',
+    'sent_internal',
+    'approved_internal',
+    'declined_internal',
+    'sent_client',
+    'approved_client',
+    'declined_client'
+);
 -- stores quotations
 CREATE TABLE IF NOT EXISTS crm.quotations(
     quotation_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
     lead_id UUID NOT NULL,
     issue_id UUID NOT NULL,
-    status varchar(20) NOT NULL DEFAULT 'new' CHECK(
-        status IN (
-            'new',
-            'sent_internal',
-            'approved_internal',
-            'declined_internal',
-            'sent_client',
-            'approved_client',
-            'declined_client'
-        )
-    ),
+    status crm.quotation_status NOT NULL DEFAULT 'new',
     -- subtotal means the total price before any tax, discount and any other charges
     subtotal NUMERIC(14, 2) NOT NULL CHECK(
         subtotal >= 0
@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS crm.quotations(
         total >= 0
     ),
     notes TEXT,
-    replace_quotation_id UUID,          -- is stores the quotation_id of the revised quotation
+    -- the old quotation that this quotation replaces (a changed quote is a new quotation)
+    replace_quotation_id UUID,
     created_by UUID REFERENCES core.agents(agent_id),
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -88,40 +89,22 @@ CREATE TABLE IF NOT EXISTS crm.quotation_adjustments(
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     FOREIGN KEY (organization_id, quotation_id)
         REFERENCES crm.quotations(organization_id, quotation_id),
-    CHECK (value_type <> 'percentage' OR value <= 100)
-    CHECK (value_type <> 'fixed' OR amount = value),
+    CHECK (value_type <> 'percentage' OR value <= 100),
+    CHECK (value_type <> 'fixed' OR amount = value)
 );
 
--- keepoing a log of the quotation sent through the staes(eg. sent_internal, sent_client, accepted_internal, accepted_client)
+-- keeping a log of the quotation sent through the states(eg. sent_internal, sent_client, approved_internal, approved_client)
 CREATE TABLE IF NOT EXISTS crm.quotation_status_history(
     history_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL,
     quotation_id UUID NOT NULL,
-    from_status VARCHAR(20),
-    to_status VARCHAR(20) NOT NULL,
+    from_status crm.quotation_status,
+    to_status crm.quotation_status NOT NULL,
     changed_by UUID NOT NULL REFERENCES core.agents(agent_id),
     reason TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     FOREIGN KEY (organization_id, quotation_id)
         REFERENCES crm.quotations(organization_id, quotation_id),
-    CHECK (to_status IN (
-        'new', 
-        'sent_internal', 
-        'approved_internal', 
-        'declined_internal',
-        'sent_client', 
-        'approved_client', 
-        'declined_client'
-    )),
-    CHECK (from_status IS NULL OR from_status IN (
-        'new', 
-        'sent_internal', 
-        'approved_internal', 
-        'declined_internal',
-        'sent_client', 
-        'approved_client', 
-        'declined_client'
-    )),
     CHECK (from_status IS NULL OR from_status <> to_status)
 );
 
@@ -130,3 +113,4 @@ DROP TABLE IF EXISTS crm.quotation_status_history;
 DROP TABLE IF EXISTS crm.quotation_adjustments;
 DROP TABLE IF EXISTS crm.quotation_items;
 DROP TABLE IF EXISTS crm.quotations;
+DROP TYPE IF EXISTS crm.quotation_status;

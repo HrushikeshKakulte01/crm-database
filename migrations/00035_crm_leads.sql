@@ -1,35 +1,36 @@
 -- +goose Up
+-- the built-in fields every form starts with
+CREATE TYPE crm.form_field_system_key AS ENUM (
+    'name',
+    'company',
+    'owner',
+    'phone',
+    'source',
+    'email',
+    'state',
+    'city'
+);
+-- the types of fields an admin can choose from
+CREATE TYPE crm.form_field_type AS ENUM (
+    'short_answer',
+    'long_answer',
+    'date',
+    'url',
+    'phone',
+    'email',
+    'number',
+    'dropdown_single',
+    'dropdown_multi'
+);
+
 -- form fields that the admin adds for leads and customers
 CREATE TABLE IF NOT EXISTS crm.form_fields(
     field_id UUID PRIMARY KEY DEFAULT uuidv7(),
     organization_id UUID NOT NULL REFERENCES core.organizations(organization_id),
     -- system_key stores the by default fields
-    form_type VARCHAR(50) NOT NULL CHECK (form_type IN ('lead', 'customer')),
-    system_key VARCHAR(20) CHECK (
-        system_key IN (
-                'name', 
-                'company', 
-                'owner', 
-                'phone', 
-                'source', 
-                'email', 
-                'state', 
-                'city')
-    ),
+    system_key crm.form_field_system_key,
     -- field_type shows the types of fields that a admin can choose from
-    field_type VARCHAR(20) NOT NULL CHECK(
-        field_type IN(
-            'short_answer',
-            'long_answer',
-            'date',
-            'url',
-            'phone',
-            'email',
-            'number',
-            'dropdown_single',
-            'dropdown_multi'
-        )
-    ),
+    field_type crm.form_field_type NOT NULL,
     -- label is the name for the field type selected
     label VARCHAR(100) NOT NULL,
     -- option stores the list of the options for the dropdown field
@@ -72,9 +73,11 @@ CREATE TABLE IF NOT EXISTS crm.leads(
     updated_at TIMESTAMPTZ,
     UNIQUE (organization_id, user_id),
     UNIQUE (organization_id, lead_id),
-    CHECK (is_converted = (converted_at IS NOT NULL)),
-    CHECK (converted_by IS NULL OR is_converted)
+    CHECK (is_converted = (converted_at IS NOT NULL))
 );
+
 -- +goose Down
 DROP TABLE IF EXISTS crm.leads;
 DROP TABLE IF EXISTS crm.form_fields;
+DROP TYPE IF EXISTS crm.form_field_type;
+DROP TYPE IF EXISTS crm.form_field_system_key;
