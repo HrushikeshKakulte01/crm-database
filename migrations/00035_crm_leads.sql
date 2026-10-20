@@ -45,8 +45,8 @@ CREATE TABLE IF NOT EXISTS crm.form_fields(
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
-    UNIQUE (organization_id, form_type, label),
-    UNIQUE (organization_id, form_type, system_key),
+    UNIQUE (organization_id, label),
+    UNIQUE (organization_id, system_key),
     CHECK (is_default = (system_key IS NOT NULL)),
     CHECK (system_key NOT IN ('name', 'owner', 'phone', 'source')
        OR (is_required AND is_visible AND is_required_locked AND is_visible_locked))

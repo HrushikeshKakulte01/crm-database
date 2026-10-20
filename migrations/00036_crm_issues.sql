@@ -152,7 +152,7 @@ CREATE TABLE IF NOT EXISTS crm.issues_assignments(
     -- the state visit while someone was assigned
     entry_id UUID NOT NULL,
     -- an agent can be assigned to an issue only once
-    UNIQUE (issue_id, agent_id),
+    UNIQUE (issue_id, agent_id, entry_id),
     FOREIGN KEY (organization_id, issue_id)
         REFERENCES crm.issues(organization_id, issue_id),
     FOREIGN KEY (organization_id, issue_id, entry_id)
