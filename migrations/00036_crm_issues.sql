@@ -114,12 +114,6 @@ CREATE TABLE IF NOT EXISTS crm.issues_pipeline_progress(
     state_id UUID NOT NULL REFERENCES crm.issues_states(state_id),
     -- the state the issues came from(null for the initial state)
     from_state_id UUID REFERENCES crm.issues_states(state_id),
-    -- tells how the issue arrived in a state
-    transition_type VARCHAR(10) NOT NULL CHECK (transition_type IN (
-            'initial',
-            'forward',
-            'backward'
-    )),
     -- reason why the move happened and reason is compulsary for a backward move(eg. from negotiation to new    )
     reason TEXT,
     -- stores the answer for the custom field
@@ -135,8 +129,6 @@ CREATE TABLE IF NOT EXISTS crm.issues_pipeline_progress(
         REFERENCES crm.issues_states(organization_id, state_id),
     FOREIGN KEY (organization_id, from_state_id)
         REFERENCES crm.issues_states(organization_id, state_id),
-    CHECK (transition_type <> 'backward' OR NULLIF(BTRIM(reason), '') IS NOT NULL),  -- backward move needs a non-blank reason
-    CHECK ((transition_type = 'initial') = (from_state_id IS NULL)),                  -- only the first entry has no from_state_id
     CHECK (from_state_id IS NULL OR from_state_id <> state_id),                         -- a move can't land in the state it left
     CHECK (jsonb_typeof(data) = 'object')                              -- accepts the data in json form {"name": "hrushikesh"}
 );
